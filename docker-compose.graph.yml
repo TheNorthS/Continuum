@@ -1,0 +1,7 @@
+services:
+  backend:
+    environment:
+      RAGE_GRAPH_ENABLED: "true"
+      RAGE_NEO4J_PASSWORD: ${RAGE_NEO4J_PASSWORD:-rag-e-local-neo4j}
+    depends_on:
+      neo4j: { condition: service_healthy }

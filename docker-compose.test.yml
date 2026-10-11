@@ -1,0 +1,25 @@
+# 仅用于独立测试项目：docker compose -p rag-e-validation -f docker-compose.yml -f docker-compose.test.yml ...
+services:
+  backend:
+    image: rag-e-backend:validation
+    ports: !override ["127.0.0.1:18000:8000"]
+    environment:
+      RAGE_ENVIRONMENT: test
+      RAGE_MODE: demo
+      RAGE_EMBEDDING_PROVIDER: hash
+      RAGE_VECTOR_BACKEND: local
+      RAGE_AUTO_MIGRATE: "true"
+      RAGE_ADMIN_USERNAME: admin
+      RAGE_ADMIN_PASSWORD: rag-e-demo-2026
+      RAGE_JWT_SECRET: local-demo-only-change-before-deploy-2026
+  frontend:
+    image: rag-e-frontend:validation
+    ports: !override ["127.0.0.1:18080:8080"]
+  milvus:
+    ports: ["127.0.0.1:19539:19530"]
+  neo4j:
+    ports: ["127.0.0.1:17687:7687", "127.0.0.1:17474:7474"]
+  redis:
+    ports: ["127.0.0.1:16379:6379"]
+  postgres:
+    ports: ["127.0.0.1:15432:5432"]

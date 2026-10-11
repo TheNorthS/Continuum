@@ -1,0 +1,15 @@
+services:
+  redis:
+    ports: !reset []
+  backend:
+    image: rag-e-backend:security
+    build: { context: ., dockerfile: backend/Dockerfile }
+    environment:
+      RAGE_GRAPH_ENABLED: "false"
+      RAGE_VECTOR_BACKEND: local
+      RAGE_ENVIRONMENT: test
+      RAGE_MODE: demo
+      RAGE_ENCRYPTION_KEY_FILE: /app/.secrets/keyring.json
+  frontend:
+    image: rag-e-frontend:security
+    build: { context: ., dockerfile: frontend/Dockerfile }

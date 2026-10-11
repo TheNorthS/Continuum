@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata: { name: rag-e-migrate-v1, namespace: rag-e }
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: rag-e-backend:1.0.0
+          command: [alembic, upgrade, head]
+          volumeMounts: [{ name: encryption, mountPath: /run/rag-e-secrets, readOnly: true }]
+          envFrom:
+            - configMapRef: { name: rag-e-config }
+            - secretRef: { name: rag-e-secrets }
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, runAsUser: 10001 }
+          resources: { requests: { cpu: 100m, memory: 256Mi }, limits: { cpu: "1", memory: 512Mi } }
+      securityContext: { fsGroup: 10001 }
+      volumes: [{ name: encryption, secret: { secretName: rag-e-encryption, defaultMode: 288 } }]

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "suite_name": "t2-10k-crud-suite",
+  "runs": {
+    "t2": {
+      "run_name": "t2-10k-production-1000",
+      "full": false,
+      "questions": 1000,
+      "documents": 10000,
+      "seed": 42
+    },
+    "crud": {
+      "run_name": "crud-full-production",
+      "full": true,
+      "questions": 2394,
+      "documents": 86835,
+      "seed": 42
+    }
+  }
+}

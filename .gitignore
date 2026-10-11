@@ -1,0 +1,57 @@
+.env
+.secrets/
+*.rage-backup
+.env.*
+!.env.example
+!.env.eval.example
+!.env.production.example
+.venv/
+.cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+node_modules/
+dist/
+*.tsbuildinfo
+data/*.db*
+data/runtime/
+logs/
+test-results/
+k8s/secrets.yaml
+deploy/prometheus/metrics.token
+
+# Machine-specific configuration and private documentation
+/config/rag.production.json
+/config/evaluation.current.json
+/docs/local/
+
+# Withdrawn external summary artifacts; retained locally, excluded from release
+/docs/assets/evaluation/other-machine-*
+/scripts/plot_reported_bounds.py
+/测试成绩.md
+
+# Imported source material is retained locally, not redistributed with the code
+/data/legacy/
+/data/documents/md/
+
+# Credentials and runtime artifacts, including nested storage directories
+**/keyring.json
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite3-*
+*.log
+coverage/
+playwright-report/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

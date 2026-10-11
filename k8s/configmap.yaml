@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rag-e-config
+  namespace: rag-e
+data:
+  RAGE_ENVIRONMENT: production
+  RAGE_PUBLIC_ORIGIN: https://rag.example.com
+  RAGE_ENCRYPTION_KEY_FILE: /run/rag-e-secrets/keyring.json
+  RAGE_TRUSTED_PROXY_HOSTS: '["10.0.0.0/8"]'
+  RAGE_PIPELINE_PROFILE: /app/config/rag.production.json
+  RAGE_AUTO_MIGRATE: "false"
+  RAGE_ADMIN_USERNAME: admin
+  RAGE_NEO4J_URI: bolt://neo4j:7687
+  RAGE_NEO4J_DATABASE: neo4j
+  RAGE_LANGFUSE_ENABLED: "false"
+  RAGE_MILVUS_URI: http://milvus.example.internal:19530
+  RAGE_MILVUS_COLLECTION: rag_e_production_v1
+  RAGE_KNOWLEDGE_NAMESPACE: production_v1
+  RAGE_REDIS_URL: redis://redis:6379/0
+  RAGE_CORS_ORIGINS: '["https://rag.example.com"]'

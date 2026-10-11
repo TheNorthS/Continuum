@@ -1,0 +1,11 @@
+# Invoke with --env-file .env.production and --profile milvus.
+# Requires Compose >= 2.24.4 for !override. HTTPS entry is configured separately.
+services:
+  backend:
+    env_file: !override [.env.production]
+    environment:
+      RAGE_PIPELINE_PROFILE: /app/config/rag.production.json
+    volumes:
+      - ./config/rag.production.json:/app/config/rag.production.json:ro
+    depends_on:
+      milvus: { condition: service_healthy }

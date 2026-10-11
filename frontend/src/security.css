@@ -1,0 +1,75 @@
+.security-form {
+  padding: 22px;
+  background: #fff;
+  border: 1px solid #dce5d8;
+  border-radius: 10px;
+  margin: 20px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+}
+.security-form h2,
+.security-form > p,
+.security-form > form,
+.permission-grid {
+  width: 100%;
+}
+.security-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 12px;
+}
+.security-form input:not([type='checkbox']),
+.security-form select {
+  padding: 9px;
+  border: 1px solid #cddcca;
+  border-radius: 5px;
+  background: #fff;
+}
+.security-form button,
+.security-roles button {
+  padding: 8px 12px;
+  border: 1px solid #b9ccaf;
+  border-radius: 6px;
+  background: #eef5e7;
+  color: #315d43;
+}
+.security-form .primary {
+  background: #176b56;
+  color: white;
+}
+.security-form form {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+.permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+.permission-grid label {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.permission-grid small {
+  width: 100%;
+  color: #8a9b82;
+}
+.security-roles {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.document-table details pre {
+  max-width: 350px;
+  white-space: pre-wrap;
+  font-size: 11px;
+}
+.document-table select {
+  max-width: 160px;
+  padding: 6px;
+}

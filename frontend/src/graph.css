@@ -1,0 +1,166 @@
+.graph-canvas {
+  border: 1px solid #dce5d8;
+  background: radial-gradient(#cddacf 1px, transparent 1px) 0 0/18px 18px #fafcf8;
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 20px 0;
+}
+.graph-canvas svg {
+  width: 100%;
+  min-height: 280px;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.graph-canvas.is-interacting svg,
+.graph-canvas.is-interacting g[role='button'] {
+  cursor: grabbing;
+}
+.graph-selection {
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #426c52;
+  background: #f7faf3;
+}
+.graph-canvas g[role='button'] {
+  cursor: grab;
+  outline-offset: 6px;
+}
+.graph-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #f0f5eb;
+}
+.graph-tools button,
+.graph-evidence button {
+  border: 1px solid #cfdec9;
+  background: white;
+  border-radius: 5px;
+  padding: 5px 10px;
+  color: #426c52;
+}
+.graph-tools span {
+  margin-left: auto;
+  font-size: 11px;
+  color: #839578;
+}
+.graph-search,
+.graph-path-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.graph-search input {
+  flex: 1;
+  border: 1px solid #dce5d5;
+  padding: 11px;
+  border-radius: 7px;
+  min-width: 180px;
+}
+.graph-path-controls label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.graph-path-controls select,
+.section-title select {
+  max-width: 240px;
+  border: 1px solid #d9e1d3;
+  border-radius: 5px;
+  padding: 7px;
+  background: #fff;
+}
+.graph-evidence {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #dee7d7;
+  border-radius: 9px;
+  margin: 18px 0;
+}
+.graph-evidence p {
+  line-height: 1.8;
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+.graph-evidence small {
+  display: block;
+  color: #849675;
+  margin-top: 8px;
+}
+.graph-evidence blockquote {
+  margin: 15px 0;
+  padding: 12px 16px;
+  border-left: 3px solid #8ab477;
+  background: #f4f7ef;
+}
+.alert-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+  margin: 20px 0;
+}
+.alert-card {
+  padding: 15px;
+  border: 1px solid #dce6d5;
+  border-radius: 8px;
+  background: #f2f7ed;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  font-size: 11px;
+}
+.alert-card strong {
+  font-weight: 500;
+}
+.alert-card span {
+  margin-left: auto;
+  color: #5e8552;
+}
+.alert-card small {
+  width: 100%;
+  color: #92a183;
+}
+.alert-card.pending {
+  background: #fff6dc;
+  border-color: #e6cf8b;
+}
+.alert-card.pending span {
+  color: #a07e28;
+}
+.alert-card.firing {
+  background: #ffebe5;
+  border-color: #e8b3a4;
+}
+.alert-card.firing span {
+  color: #b34f3c;
+}
+.content-page > details {
+  margin: 18px 0 30px;
+  font-size: 12px;
+  color: #6b7d61;
+}
+.document-table td > button {
+  border: 1px solid #dce5d5;
+  background: #f7faf3;
+  border-radius: 5px;
+  color: #557845;
+  padding: 5px 9px;
+}
+.document-table td small {
+  white-space: normal;
+}
+@media (max-width: 700px) {
+  .graph-tools span {
+    display: none;
+  }
+  .graph-path-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .graph-canvas svg {
+    min-height: 230px;
+  }
+}

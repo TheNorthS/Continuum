@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: frontend, namespace: rag-e }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: frontend } }
+  template:
+    metadata: { labels: { app: frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: rag-e-frontend:1.0.0
+          ports: [{ containerPort: 8080 }]
+          readinessProbe: { httpGet: { path: /, port: 8080 } }
+          securityContext: { allowPrivilegeEscalation: false, runAsNonRoot: true, runAsUser: 101, capabilities: { drop: [ALL] } }
+          resources: { requests: { cpu: 50m, memory: 64Mi }, limits: { cpu: 500m, memory: 128Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: frontend, namespace: rag-e }
+spec: { selector: { app: frontend }, ports: [{ port: 8080, targetPort: 8080 }] }

@@ -1,0 +1,154 @@
+{
+  "date": "2026-10-11",
+  "scope": "diagnostic aggregates; purposive cases, not an unbiased quality estimate",
+  "dense_reference_coverage": {
+    "method": "32 normalized characters sliding at stride 16 across each single-QA reference body; all 48 official files checked; not semantic answerability",
+    "single_questions": 800,
+    "queries_with_zero_windows_in_45": 372,
+    "queries_with_zero_windows_in_48": 372,
+    "distribution": {
+      "10pct_to_80pct": 220,
+      "zero": 372,
+      "80pct_plus": 81,
+      "under_10pct": 127
+    }
+  },
+  "t2_context_coverage": {
+    "dataset": "T2 1000 queries / 10000 docs",
+    "averages": {
+      "recall4_ceiling": 0.7755764665109517,
+      "chunk_recall4": 0.6684989357084209,
+      "chunk_recall8": 0.8257583869247257,
+      "chunk_recall12": 0.8751172739992898,
+      "candidate_recall32": 0.9104432619784313,
+      "unique_docs_in_4": 3.711
+    },
+    "relevant_count_distribution": {
+      "5": 94,
+      "1": 118,
+      "7": 80,
+      "8": 63,
+      "11": 29,
+      "4": 121,
+      "9": 51,
+      "6": 93,
+      "3": 137,
+      "2": 122,
+      "14": 8,
+      "16": 6,
+      "62": 1,
+      "22": 3,
+      "10": 38,
+      "13": 12,
+      "18": 3,
+      "12": 12,
+      "17": 2,
+      "15": 2,
+      "20": 2,
+      "21": 2,
+      "19": 1
+    },
+    "notes": "Chunk cutoffs are actual generation context units; existing report recall@4 is deduplicated document cutoff. Top8/12 here are offline candidates only, not new generation tests."
+  },
+  "controlled_probe": {
+    "answered_low_overlap": {
+      "saved_top4": {
+        "n": 3,
+        "statuses": {
+          "checks_passed": 3
+        },
+        "diagnostic_raw_answer_f1": 0.35463750615400724
+      },
+      "saved_top8": {
+        "n": 3,
+        "statuses": {
+          "checks_passed": 3
+        },
+        "diagnostic_raw_answer_f1": 0.34711016009203793
+      },
+      "reference_news": {
+        "n": 3,
+        "statuses": {
+          "checks_passed": 3
+        },
+        "diagnostic_raw_answer_f1": 0.6657478842690876
+      }
+    },
+    "no_reference_anchor": {
+      "saved_top4": {
+        "n": 3,
+        "statuses": {
+          "no_relevant_evidence": 2,
+          "checks_rejected": 1
+        },
+        "diagnostic_raw_answer_f1": 0.08281573498964803
+      },
+      "saved_top8": {
+        "n": 3,
+        "statuses": {
+          "no_relevant_evidence": 2,
+          "checks_rejected": 1
+        },
+        "diagnostic_raw_answer_f1": 0.08281573498964803
+      },
+      "reference_news": {
+        "n": 3,
+        "statuses": {
+          "checks_passed": 3
+        },
+        "diagnostic_raw_answer_f1": 0.7686736525088927
+      }
+    },
+    "reference_found_below_top4": {
+      "saved_top4": {
+        "n": 3,
+        "statuses": {
+          "checks_rejected": 2,
+          "no_relevant_evidence": 1
+        },
+        "diagnostic_raw_answer_f1": 0.40807194754563175
+      },
+      "saved_top8": {
+        "n": 3,
+        "statuses": {
+          "checks_rejected": 2,
+          "checks_passed": 1
+        },
+        "diagnostic_raw_answer_f1": 0.6289081971157978
+      },
+      "reference_news": {
+        "n": 3,
+        "statuses": {
+          "checks_rejected": 1,
+          "checks_passed": 2
+        },
+        "diagnostic_raw_answer_f1": 0.8168553022029542
+      }
+    },
+    "reference_in_top4_but_rejected": {
+      "saved_top4": {
+        "n": 3,
+        "statuses": {
+          "checks_passed": 1,
+          "checks_rejected": 2
+        },
+        "diagnostic_raw_answer_f1": 0.79332050665384
+      },
+      "saved_top8": {
+        "n": 3,
+        "statuses": {
+          "checks_rejected": 3
+        },
+        "diagnostic_raw_answer_f1": 0.7930674264007597
+      },
+      "reference_news": {
+        "n": 3,
+        "statuses": {
+          "checks_rejected": 3
+        },
+        "diagnostic_raw_answer_f1": 0.8356876064964988
+      }
+    }
+  },
+  "probe_limitations": "12 purposive cases, 3 contexts each; fixed initial contexts; one generation/check; no retrieval rewrites; checks passed is not human-confirmed correctness"
+}

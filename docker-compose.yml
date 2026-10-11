@@ -1,0 +1,113 @@
+name: rag-e
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+services:
+  backend:
+    build: { context: ., dockerfile: backend/Dockerfile }
+    env_file: .env
+    environment:
+      RAGE_DATABASE_URL: postgresql+psycopg://rage:${POSTGRES_PASSWORD:-rag-e-local-postgres}@postgres:5432/rage
+      RAGE_REDIS_URL: redis://redis:6379/0
+      RAGE_MILVUS_URI: http://milvus:19530
+      RAGE_NEO4J_URI: bolt://neo4j:7687
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["./data/documents:/app/data/documents:ro", "encryption-keys:/app/.secrets"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    restart: unless-stopped
+    logging: *logging
+  frontend:
+    build: { context: ., dockerfile: frontend/Dockerfile }
+    ports: ["127.0.0.1:8080:8080"]
+    depends_on:
+      backend: { condition: service_healthy }
+    restart: unless-stopped
+    logging: *logging
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: rage
+      POSTGRES_USER: rage
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rag-e-local-postgres}
+    volumes: ["postgres-data:/var/lib/postgresql/data"]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U rage -d rage"], interval: 5s, timeout: 5s, retries: 20 }
+    restart: unless-stopped
+    logging: *logging
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru"]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 20 }
+    restart: unless-stopped
+    logging: *logging
+  etcd:
+    profiles: ["milvus"]
+    image: quay.io/coreos/etcd:v3.5.18
+    environment: { ETCD_AUTO_COMPACTION_MODE: revision, ETCD_AUTO_COMPACTION_RETENTION: "1000", ETCD_QUOTA_BACKEND_BYTES: "4294967296" }
+    command: ["etcd", "--advertise-client-urls=http://etcd:2379", "--listen-client-urls=http://0.0.0.0:2379", "--data-dir=/etcd"]
+    volumes: ["etcd-data:/etcd"]
+    healthcheck: { test: ["CMD", "etcdctl", "endpoint", "health"], interval: 10s, timeout: 5s, retries: 10 }
+    restart: unless-stopped
+    logging: *logging
+  minio:
+    profiles: ["milvus"]
+    build: { context: ., dockerfile: deploy/minio/Dockerfile }
+    image: rag-e-minio:2024-12-18
+    environment: { MINIO_ROOT_USER: rage, MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-rag-e-local-minio}" }
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes: ["minio-data:/data"]
+    healthcheck: { test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:9000/minio/health/live', timeout=3)"], interval: 10s, timeout: 5s, retries: 10 }
+    restart: unless-stopped
+    logging: *logging
+  milvus:
+    profiles: ["milvus"]
+    image: milvusdb/milvus:v2.6.9
+    command: ["milvus", "run", "standalone"]
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: rage
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-rag-e-local-minio}
+    volumes: ["milvus-data:/var/lib/milvus"]
+    depends_on:
+      etcd: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    healthcheck: { test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"], interval: 10s, timeout: 5s, retries: 30, start_period: 30s }
+    restart: unless-stopped
+    logging: *logging
+  neo4j:
+    profiles: ["graph"]
+    image: neo4j:5.26-community
+    environment:
+      NEO4J_AUTH: neo4j/${RAGE_NEO4J_PASSWORD:-rag-e-local-neo4j}
+      NEO4J_server_memory_heap_initial__size: 256m
+      NEO4J_server_memory_heap_max__size: 512m
+      NEO4J_server_memory_pagecache_size: 256m
+    volumes: ["neo4j-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+    restart: unless-stopped
+    logging: *logging
+  prometheus:
+    profiles: ["monitoring"]
+    image: prom/prometheus:v3.5.0
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/prometheus/metrics.token:/run/secrets/metrics_token:ro
+      - prometheus-data:/prometheus
+    restart: unless-stopped
+    logging: *logging
+volumes:
+  encryption-keys:
+  neo4j-data:
+  prometheus-data:
+  postgres-data:
+  etcd-data:
+  minio-data:
+  milvus-data:

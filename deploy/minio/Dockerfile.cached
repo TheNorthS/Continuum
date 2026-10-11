@@ -1,0 +1,15 @@
+# Build context is .cache/minio, populated by the verified download.py helper.
+FROM python:3.12-slim
+ARG TARGETARCH
+COPY . /tmp/minio-artifacts/
+RUN case "$TARGETARCH" in \
+      amd64) MINIO_SHA=88182336ab5793488f2caad54846056b330f0dcb5c488b60d52434beeebae3ca ;; \
+      arm64) MINIO_SHA=455c9b3093b7c1e6153c85cfd745c7c401a92497346ba24dbe45775c7b3ab1cd ;; \
+      *) exit 1 ;; \
+    esac && echo "$MINIO_SHA  /tmp/minio-artifacts/minio-$TARGETARCH" | sha256sum -c - \
+    && install -m 755 "/tmp/minio-artifacts/minio-$TARGETARCH" /usr/local/bin/minio \
+    && useradd --uid 10002 --create-home minio && mkdir /data && chown minio:minio /data
+USER minio
+EXPOSE 9000 9001
+ENTRYPOINT ["/usr/local/bin/minio"]
+CMD ["server", "/data", "--console-address", ":9001"]

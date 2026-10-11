@@ -1,0 +1,43 @@
+digraph QuestionAnswering {
+  graph [rankdir=TB, bgcolor="white", pad=0.35, nodesep=0.48, ranksep=0.47,
+         splines=polyline, fontname="Microsoft YaHei", fontsize=22,
+         labelloc=t, label="选定知识库的问答流程\n "];
+  node [shape=box, style="rounded,filled", fillcolor="#F8FAFC", color="#CBD5E1",
+        fontname="Microsoft YaHei", fontsize=14, fontcolor="#0F172A", margin="0.20,0.14", penwidth=1.3];
+  edge [color="#94A3B8", penwidth=1.4, arrowsize=0.75, fontname="Microsoft YaHei", fontsize=11, fontcolor="#475569"];
+
+  request [label="用户问题 + 所选知识库", fillcolor="#DBEAFE", color="#3B82F6", width=4.8, group=main];
+  preflight [label="① 准入与上下文准备\n认证 / 资源授权 / 会话租约\n问题及历史内容审查 → 追问上下文化", width=4.8, group=main];
+  retrieve [label="② 范围内检索\nBM25 + 向量 + 可选图谱 → RRF\n可选精排 → Top-K → 权限复核",
+            fillcolor="#EFF6FF", color="#60A5FA", width=4.8, group=main];
+  evidence [label="③ 来源筛选\n安全过滤 + 相关性判断\n资料可用且允许继续生成？", shape=diamond,
+            fillcolor="#F0FDF4", color="#4ADE80", fontsize=13, group=main];
+  generate [label="④ 生成与输出审查\n仅基于当前资料，围绕原始问题作答\n生成计数累加，随后审核候选答案",
+            fillcolor="#F5F3FF", color="#A78BFA", width=4.8, group=main];
+  grade [label="⑤ 回答质量检查\n先检查事实依据\n通过后检查是否解决原问题", shape=diamond,
+         fillcolor="#F0FDF4", color="#4ADE80", fontsize=13, group=main];
+  finish [label="⑥ 最终检查与提交\n复核答案 / 引用安全及资源归属\n保存本轮会话，返回答案与引用",
+          fillcolor="#DCFCE7", color="#22C55E", width=4.8, group=main];
+
+  rewrite [label="检索纠正\n生成次数已用尽 → 返回资料不足\n否则仍可改写 → 改写查询，回到②\n无改写额度 → 返回资料不足",
+           fillcolor="#FFF7ED", color="#FB923C", width=4.5, group=correction];
+  retry [label="回答纠正\n缺少依据 → 用当前资料重新生成，回到④\n有依据但未解决问题 → 改写查询，回到②\n相应重试预算耗尽 → 返回资料不足",
+         fillcolor="#FFF7ED", color="#FB923C", width=4.5, group=correction];
+  failure [label="异常终止（独立于质量重试）\n安全拦截 / 审查故障 / 依赖错误 / 超时\n返回拦截或错误，不保存本轮消息",
+           fillcolor="#FFF1F2", color="#FB7185", width=5.0, group=correction];
+
+  request -> preflight [weight=30];
+  preflight -> retrieve [weight=30];
+  retrieve -> evidence [weight=30];
+  evidence -> generate [label="是", color="#22C55E", weight=30];
+  generate -> grade [weight=30];
+  grade -> finish [label="两项均通过", color="#22C55E", weight=30];
+  evidence -> rewrite [label="否", color="#F59E0B", constraint=false];
+  grade -> retry [label="未通过", color="#F59E0B", constraint=false];
+  rewrite -> retry [style=invis, weight=10];
+  retry -> failure [style=invis, weight=10];
+
+  {rank=same; evidence; rewrite;}
+  {rank=same; grade; retry;}
+  {rank=same; finish; failure;}
+}

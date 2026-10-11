@@ -1,0 +1,60 @@
+digraph Architecture {
+  graph [rankdir=TB, bgcolor="white", pad=0.35, nodesep=0.45, ranksep=0.65,
+         splines=polyline, fontname="Microsoft YaHei", fontsize=22,
+         labelloc=t, label="RAG-E 系统架构\n "];
+  node [shape=box, style="rounded,filled", fillcolor="#F8FAFC", color="#CBD5E1",
+        fontname="Microsoft YaHei", fontsize=14, fontcolor="#0F172A", margin="0.22,0.16", penwidth=1.3];
+  edge [color="#94A3B8", penwidth=1.35, arrowsize=0.75, fontname="Microsoft YaHei", fontsize=11, fontcolor="#475569"];
+
+  ui [label="用户工作台 · React + TypeScript\n知识问答 / 多知识库 / 图谱探索 / 账号权限 / 监控",
+      fillcolor="#EFF6FF", color="#60A5FA", width=7.5];
+
+  subgraph cluster_application {
+    label="应用服务 · FastAPI"; labeljust=l; fontsize=15; fontcolor="#475569";
+    color="#DBEAFE"; bgcolor="#F8FBFF"; style="rounded"; margin=22;
+    api [label="统一请求入口\nJWT · 请求签名 · RBAC / 资源授权 · 限流",
+         fillcolor="#DBEAFE", color="#3B82F6", width=5.4];
+    ingest [label="文档导入\n校验与去重\n章节解析 / 语义分块"];
+    chat [label="问答服务\nChatService / LangGraph\n上下文 · 审查 · 生成与有限重试"];
+    admin [label="资源与账号管理\n用户 / 角色 / 知识库 ACL\n会话归属 · 审计 · 数据访问"];
+    {rank=same; ingest; chat; admin;}
+    knowledge [label="知识服务\n索引管理 · BM25 + 向量 + 可选图谱\nRRF 融合 · 模型精排 · 权限复核",
+               fillcolor="#ECFDF5", color="#34D399", width=5.4];
+    api -> ingest;
+    api -> chat;
+    api -> admin;
+    ingest -> knowledge;
+    chat -> knowledge;
+  }
+
+  subgraph cluster_dependencies {
+    label="模型与存储依赖"; labeljust=l; fontsize=15; fontcolor="#475569";
+    color="#E2E8F0"; style="rounded"; margin=20;
+    models [label="模型适配层\nLLM / Embedding / Rerank\n在线 API / 可选本地模型",
+            fillcolor="#F5F3FF", color="#A78BFA"];
+    vector [label="检索索引\nMilvus：稠密向量 + BM25\n开发可使用本地索引", shape=cylinder,
+            fillcolor="#ECFDF5", color="#34D399"];
+    neo [label="Neo4j · 可选\n实体 / 关系 / 原文证据\n路径与规则推理", shape=cylinder,
+         fillcolor="#ECFDF5", color="#34D399"];
+    cache [label="多级缓存\n进程内 L1 LRU\nRedis L2 · 可选", shape=cylinder];
+    sql [label="业务存储\nSQLite / PostgreSQL\n账号 · 文档状态 · 会话 · 审计", shape=cylinder];
+    {rank=same; models; vector; neo; cache; sql;}
+  }
+
+  obs [label="贯穿各层的可观测性\nPrometheus 指标  ·  Profiler p50 / p95 / p99  ·  告警状态机  ·  Trace / 可选 Langfuse",
+       fillcolor="#FFF7ED", color="#FDBA74", width=10.5];
+
+  ui -> api [label="HTTP / SSE"];
+  chat -> models;
+  knowledge -> models;
+  knowledge -> vector;
+  knowledge -> neo;
+  knowledge -> cache;
+  admin -> sql;
+  knowledge -> sql;
+  models -> obs [style=dashed, color="#F59E0B", arrowhead=none];
+  sql -> obs [style=dashed, color="#F59E0B", arrowhead=none];
+  vector -> obs [style=invis];
+  neo -> obs [style=invis];
+  cache -> obs [style=invis];
+}
