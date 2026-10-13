@@ -206,36 +206,61 @@ class GraphService:
         }
 
     async def recall(self, query, limit):
-        if not self.enabled:
+        if not self.enabled or limit <= 0:
             return []
         params, revision = await self.context()
-        params.update(query=normalized(query), limit=limit * 4)
-        params["seeds"] = [
-            n["id"]
+        query = normalized(query)
+        if not query or not params["ready"]:
+            return []
+        params.update(query=query, limit=limit * 4)
+        matches = {
+            n["id"]: normalized(n["name"])
             for n in await self.candidate_nodes(params, revision)
-            if normalized(n["name"]) in normalized(query)
-        ][:10]
+            if normalized(n["name"]) and normalized(n["name"]) in query
+        }
+        # Prefer specific entity mentions before the seed budget; IDs only break ties.
+        params["seeds"] = sorted(matches, key=lambda nid: (-len(matches[nid]), nid))[:10]
+        if not params["seeds"]:
+            return []
         hops = self.settings.graph_retrieval_hops
         records = await self.store.read(
-            "recall",
+            "recall_ranked_v2",
             f"""MATCH (seed:RageEntity {{namespace:$ns}})
             WHERE seed.id IN $seeds AND any(d IN seed.documents WHERE d IN $ready)
-            WITH seed LIMIT 10
             MATCH p=(seed)-[:RAGE_REL*1..{hops}]-(other:RageEntity)
             WHERE all(r IN relationships(p) WHERE r.namespace=$ns AND r.document_id IN $ready)
-            UNWIND relationships(p) AS r RETURN DISTINCT r.chunk_id AS chunk_id LIMIT $limit""",
+            UNWIND relationships(p) AS r
+            WITH r.chunk_id AS chunk_id, count(DISTINCT seed.id) AS matched_entities,
+                 min(length(p)) AS min_hops
+            RETURN chunk_id, matched_entities, min_hops
+            ORDER BY matched_entities DESC, min_hops ASC, chunk_id ASC LIMIT $limit""",
             params,
             revision,
         )
-        chunks = await asyncio.to_thread(self.repository.chunks_by_ids, [r["chunk_id"] for r in records])
+        if not records:
+            return []
+        chunks = {
+            c["id"]: c
+            for c in await asyncio.to_thread(self.repository.chunks_by_ids, [r["chunk_id"] for r in records])
+        }
+        # SQL IN does not preserve the input ranking. Hydrate in graph order,
+        # skipping chunks removed by the current ACL/ready-state check.
+        ranked = [(record, chunks[record["chunk_id"]]) for record in records if record["chunk_id"] in chunks]
         return [
             {
                 "id": c["id"],
                 "text": c["text"],
-                "metadata": {**c["meta"], "retrieval": "graph"},
+                "metadata": {
+                    **c["meta"],
+                    "retrieval": "graph",
+                    "graph_recall": {
+                        "matched_entities": record["matched_entities"],
+                        "min_hops": record["min_hops"],
+                    },
+                },
                 "score": 1 / (60 + i),
             }
-            for i, c in enumerate(chunks, 1)
+            for i, (record, c) in enumerate(ranked, 1)
         ]
 
     async def close(self):

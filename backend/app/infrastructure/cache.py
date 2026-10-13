@@ -81,6 +81,7 @@ class Cache:
         result = await self.get(key)
         if result is not None:
             return result
+        # 双重检查 分段锁 保护loader
         async with self.locks[hash(key) % len(self.locks)]:
             result = await self.get(key)
             if result is None:

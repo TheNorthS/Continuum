@@ -64,3 +64,61 @@ async def test_neo4j_extraction_paths_retrieval_cache_and_deletion(settings):
                 )
                 await result.consume()
         await services.close()
+
+
+@pytest.mark.external
+@pytest.mark.skipif(not os.getenv("RAGE_TEST_NEO4J_URI"), reason="test Neo4j URI not configured")
+async def test_graph_recall_ranks_entity_coverage_and_distance_before_limit(settings, monkeypatch):
+    settings.graph_enabled = True
+    settings.graph_retrieval_hops = 2
+    settings.neo4j_uri = os.environ["RAGE_TEST_NEO4J_URI"]
+    settings.neo4j_password = SecretStr(os.getenv("RAGE_TEST_NEO4J_PASSWORD", "rag-e-local-neo4j"))
+    settings.knowledge_namespace = "ranking_" + uuid.uuid4().hex
+    services = Container(settings)
+    documents = {}
+    try:
+        await services.start()
+        for name, text in (
+            ("both", "星河 --关联--> 汇聚\n海岚 --关联--> 汇聚"),
+            ("direct", "星河 --关联--> 中转"),
+            ("far", "中转 --关联--> 终端"),
+            ("tie", "星河 --关联--> 旁支"),
+        ):
+            doc = await services.knowledge.ingest(name + ".md", text.encode())
+            documents[name] = doc["id"]
+            assert doc["graph_status"] == "ready"
+        # Force SQL hydration into the opposite order: ranking must come from Cypher.
+        original = services.repository.chunks_by_ids
+
+        def reverse_hydration(ids):
+            by_id = {c["id"]: c for c in original(ids)}
+            return [by_id[cid] for cid in reversed(ids) if cid in by_id]
+
+        monkeypatch.setattr(services.repository, "chunks_by_ids", reverse_hydration)
+        result = await services.graph.recall(
+            "星河 海岚", 1
+        )  # Fourfold overfetch, ranked before SQL hydration.
+        expected = [
+            documents["both"] + "_0",
+            *sorted(documents[n] + "_0" for n in ("direct", "tie")),
+            documents["far"] + "_0",
+        ]
+        assert [r["id"] for r in result] == expected
+        assert result[0]["metadata"]["graph_recall"] == {"matched_entities": 2, "min_hops": 1}
+        assert result[-1]["metadata"]["graph_recall"] == {"matched_entities": 1, "min_hops": 2}
+        assert await services.graph.recall("星河 海岚", 1) == result
+        single = await services.graph.recall("星河", 4)
+        assert len(single) == 4
+        assert all(r["metadata"]["graph_recall"]["matched_entities"] == 1 for r in single)
+        assert single[-1]["id"] == documents["far"] + "_0"
+    finally:
+        for document in documents.values():
+            await services.knowledge.delete(document)
+        if services.graph.store.driver:
+            async with services.graph.store.driver.session() as session:
+                await (
+                    await session.run(
+                        "MATCH (g:RageGraph {namespace:$ns}) DELETE g", ns=settings.knowledge_namespace
+                    )
+                ).consume()
+        await services.close()
