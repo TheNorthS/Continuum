@@ -96,10 +96,14 @@ uv run --inexact python -m app.cli verify
 
 ```dotenv
 RAGE_WEB_SEARCH_ENABLED=true
+RAGE_WEB_SEARCH_PROVIDER=hybrid
 RAGE_TAVILY_API_KEY=your-tavily-key
+RAGE_EXA_API_KEY=your-exa-key
 ```
 
-共享 JSON 中对应字段为 `web_search_enabled`。联网仅用于没有固定知识库范围的兼容 API / CLI 路径；网页选库问答始终使用所选资料，即使配置了 Tavily 也不会自动扩展到网络。
+未使用共享 profile 时将以上配置写入 `.env`；使用 profile 时，在共享 JSON 中设置 `web_search_enabled=true`、`web_search_provider="hybrid"`，环境文件仅放密钥。可单独选择 `tavily` 或 `exa`，只需对应的 Key。
+
+联网仅用于没有固定知识库范围的兼容 API / CLI 路径；网页选库问答始终使用所选资料。默认任一路失败会报错；允许部分结果、超时和来源规则见 [Tavily / Exa 联网检索](WEB_SEARCH.md)。
 
 ## 排查入口
 

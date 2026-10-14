@@ -6,8 +6,14 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-PIPELINE_FIELDS = frozenset(
-    """
+WEB_PIPELINE_FIELDS = frozenset(
+    "web_search_provider web_search_max_results web_search_timeout web_search_max_concurrency "
+    "web_search_content_max_chars web_search_failure_mode tavily_search_depth".split()
+)
+
+PIPELINE_FIELDS = (
+    frozenset(
+        """
 mode llm_base_url llm_model llm_thinking llm_timeout request_timeout
 llm_max_connections llm_max_concurrency llm_batch_size
 embedding_provider embedding_model embedding_dimension embedding_device embedding_base_url
@@ -24,6 +30,8 @@ moderation_backend moderation_model moderation_base_url moderation_thinking
 moderation_timeout moderation_check_timeout moderation_max_concurrency
 moderation_chunk_chars moderation_max_chars moderation_thresholds
 """.split()
+    )
+    | WEB_PIPELINE_FIELDS
 )
 
 
@@ -43,8 +51,14 @@ def apply_profile(model, values, root):
     ):
         raise ValueError("RAG 配置文件须包含 version=1 和 settings")
     profile = document["settings"]
-    if set(profile) != PIPELINE_FIELDS:
+    if set(profile) - PIPELINE_FIELDS or (PIPELINE_FIELDS - WEB_PIPELINE_FIELDS) - set(profile):
         raise ValueError("RAG 配置字段不完整或包含不允许的字段；不得包含凭据和存储地址")
+    # v1 profiles predating dual-provider web search inherit explicit policy defaults.
+    # Environment overrides still go through the same conflict checks.
+    profile = {
+        **{key: model.model_fields[key].default for key in WEB_PIPELINE_FIELDS},
+        **profile,
+    }
     conflicts = []
     for key, configured in profile.items():
         if key in values:

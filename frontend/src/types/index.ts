@@ -25,6 +25,9 @@ export interface Source {
     category?: string;
     rerank_status?: 'ranked' | 'fallback';
     rerank_model?: string;
+    web_providers?: string[];
+    web_status?: 'complete' | 'partial';
+    web_failed_providers?: string[];
   };
 }
 export interface Step {
@@ -82,6 +85,15 @@ export interface SystemInfo {
   vector_backend: string;
   embedding_provider: string;
   web_search_enabled: boolean;
+  web_search?: {
+    enabled: boolean;
+    provider: 'tavily' | 'exa' | 'hybrid';
+    configured: Record<string, boolean>;
+    max_results: number;
+    timeout: number;
+    failure_mode: 'error' | 'partial';
+    scope_policy: 'unscoped_only';
+  };
   version: string;
   max_upload_bytes: number;
 }

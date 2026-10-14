@@ -143,3 +143,44 @@ test('citations display rerank score distinctly and fallback is visible', () => 
   expect(screen.getByText(/模型精排分数：0.8200/).textContent).toContain('不代表答案置信度');
   expect(screen.getByRole('status').textContent).toContain('回退为 RRF');
 });
+
+test('system shows the selected web providers and knowledge scope policy', async () => {
+  mocked.mockImplementation(async (path) => {
+    if (path === '/system')
+      return {
+        mode: 'live',
+        web_search_enabled: true,
+        web_search: { provider: 'hybrid', max_results: 3 },
+      };
+    if (path === '/health/ready') return { checks: { database: 'ok' } };
+    if (path === '/agents/workflow') return { mermaid: 'graph LR' };
+    return {};
+  });
+  render(<System />);
+  expect(await screen.findByText(/Tavily \+ Exa/)).toBeTruthy();
+  expect(screen.getByText(/选定知识库时仅使用库内资料/)).toBeTruthy();
+});
+
+test('web citations show providers and partial search notice', () => {
+  render(
+    <Sources
+      sources={[
+        {
+          id: 'web-article',
+          text: '公开摘要',
+          score: 0.02,
+          metadata: {
+            source: 'https://example.org/article',
+            title: '公开资料',
+            web_providers: ['exa'],
+            web_status: 'partial',
+            web_failed_providers: ['tavily'],
+          },
+        },
+      ]}
+    />,
+  );
+  expect(screen.getByText(/网络来源 · Exa/)).toBeTruthy();
+  expect(screen.getByRole('status').textContent).toContain('部分网络搜索服务暂不可用');
+  expect(screen.getByRole('link', { hidden: true }).getAttribute('href')).toBe('https://example.org/article');
+});

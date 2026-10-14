@@ -55,7 +55,15 @@ class Settings(BaseSettings):
     milvus_hnsw_ef_construction: int = Field(default=128, ge=8, le=4096)
     milvus_hnsw_ef: int = Field(default=128, ge=1, le=32768)
     tavily_api_key: SecretStr = SecretStr("")
+    exa_api_key: SecretStr = SecretStr("")
     web_search_enabled: bool = False
+    web_search_provider: Literal["tavily", "exa", "hybrid"] = "tavily"
+    web_search_max_results: int = Field(default=3, ge=1, le=10)
+    web_search_timeout: float = Field(default=20, gt=0, le=60)
+    web_search_max_concurrency: int = Field(default=4, ge=1, le=16)
+    web_search_content_max_chars: int = Field(default=5000, ge=500, le=12000)
+    web_search_failure_mode: Literal["error", "partial"] = "error"
+    tavily_search_depth: Literal["basic", "advanced"] = "basic"
     knowledge_domain: str = "用户上传的各领域知识与专业文档，不限制行业；优先检索知识库，实时信息按需联网"
     knowledge_namespace: str = Field(default="default", pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     llm_max_connections: int = Field(default=32, ge=1, le=256)
@@ -223,8 +231,17 @@ class Settings(BaseSettings):
                 raise ValueError("live 模式必须使用真实 embedding 模型")
         if self.embedding_provider == "api" and not self.embedding_api_key.get_secret_value():
             raise ValueError("API embedding 需要独立配置 API Key")
-        if self.web_search_enabled and not self.tavily_api_key.get_secret_value():
-            raise ValueError("开启联网搜索需要 Tavily API Key")
+        if self.web_search_enabled:
+            if (
+                self.web_search_provider in {"tavily", "hybrid"}
+                and not self.tavily_api_key.get_secret_value().strip()
+            ):
+                raise ValueError("所选联网搜索模式需要 Tavily API Key")
+            if (
+                self.web_search_provider in {"exa", "hybrid"}
+                and not self.exa_api_key.get_secret_value().strip()
+            ):
+                raise ValueError("所选联网搜索模式需要 Exa API Key")
         if self.environment == "production":
             if self.effective_moderation_backend != "llm":
                 raise ValueError("生产环境必须启用语义内容审查，不能只使用本地规则")

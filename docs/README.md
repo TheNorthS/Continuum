@@ -10,6 +10,7 @@
 | [真实模型接入](QUICKSTART.md) | 配置 LLM、Embedding、Milvus 和文档导入 |
 | [知识库范围](KNOWLEDGE_SCOPE.md) | 单 / 多库问答、会话范围与授权 |
 | [模型精排](RERANK.md) | 在线 API、本地 CrossEncoder、候选与异常策略 |
+| [联网检索](WEB_SEARCH.md) | Tavily / Exa 单路或双路并行、配置、来源与故障处理 |
 
 ## 设计、部署与安全
 

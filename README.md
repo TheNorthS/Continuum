@@ -54,6 +54,7 @@ RAG-E 将文档导入、检索增强生成、图谱探索和账号权限整合�
 |---|---|
 | 📚 **多知识库工作台** | 单库 / 多库选择、会话范围记忆、文档状态与来源展开；问答范围贯穿检索、图谱、缓存和引用校验 |
 | 🔍 **混合检索与模型精排** | BM25 + 稠密向量 + 可选图谱召回，RRF 融合后通过在线 API / 本地 CrossEncoder 精排 |
+| 🌐 **可选联网检索** | Tavily / Exa 单路或双路并行，URL 去重、RRF 融合、来源引用与内容审查；选库问答保持库内范围 |
 | 🤖 **有界 Agent 工作流** | LangGraph 自适应 RAG 与工具路由，串联资料相关性、问题改写、答案生成及事实依据检查 |
 | 🕸️ **知识图谱与证据** | Neo4j 实体关系抽取、原文证据、多跳路径、子类传递推理、Cypher 缓存与力导向图交互 |
 | ⚡ **性能工程** | L1 LRU + L2 Redis、共享连接池、有界批量推理、每进程共享检索服务与阻塞操作卸载 |
@@ -192,6 +193,7 @@ Langfuse 默认不导出问题、文档和答案正文。连接池和并发参�
 | API 与配置 | Python 3.11–3.13、FastAPI、Uvicorn、Pydantic Settings |
 | 工作流与模型 | LangGraph、HTTPX、Chat Completions 兼容服务 |
 | 检索与精排 | Milvus、BM25、RRF、在线 Rerank API、可选 Sentence Transformers CrossEncoder |
+| 联网搜索 | Tavily Search、Exa Search、HTTPX 异步双路融合 |
 | 图谱 | Neo4j、异步 Bolt driver、参数化 Cypher |
 | 业务数据 | SQLAlchemy、Alembic、SQLite / PostgreSQL |
 | 缓存与安全 | Redis、PyJWT、P-256 请求签名、scrypt、cryptography AES-GCM |
@@ -454,6 +456,7 @@ npm run build
 |---|---|
 | 接入自己的模型和资料 | [模型配置](docs/QUICKSTART.md) · [精排接入](docs/RERANK.md) · [知识库范围](docs/KNOWLEDGE_SCOPE.md) |
 | 理解检索和问答链路 | [系统架构](docs/ARCHITECTURE.md) · [生产与评测共享参数](docs/SHARED_PIPELINE.md) |
+| 配置网络检索 | [Tavily / Exa 接入、双路融合与故障策略](docs/WEB_SEARCH.md) |
 | 管理账号、权限与内容审查 | [安全体系](docs/SECURITY.md) · [内容审查](docs/MODERATION.md) |
 | 启用图谱或排查性能 | [图谱、缓存、指标与追踪](docs/GRAPH_PERFORMANCE_OBSERVABILITY.md) |
 | 部署和维护服务 | [Docker 与备份](docs/DEPLOYMENT.md) · [Kubernetes](k8s/README.md) |

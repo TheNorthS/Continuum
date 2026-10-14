@@ -6,7 +6,7 @@ from pydantic import ValidationError
 from app.config import ROOT, Settings
 from app.evaluation.audit import audit
 from app.evaluation.configuration import load_settings
-from app.pipeline_profile import effective_pipeline, pipeline_fingerprint
+from app.pipeline_profile import WEB_PIPELINE_FIELDS, effective_pipeline, pipeline_fingerprint
 
 
 def profile_config(tmp_path, extra=""):
@@ -59,6 +59,7 @@ def test_profile_fingerprint_tracks_every_algorithm_setting(tmp_path):
         "RAGE_GRAPH_ENABLED=true\n",
         "RAGE_RERANK_CANDIDATES=48\n",
         "RAGE_EMBEDDING_MODEL=another-model\n",
+        "RAGE_WEB_SEARCH_PROVIDER=exa\n",
     ],
 )
 def test_profile_rejects_environment_drift(tmp_path, extra):
@@ -74,6 +75,28 @@ def test_equivalent_env_values_allowed_and_secret_profile_forbidden(tmp_path):
     content["settings"]["llm_api_key"] = "should-not-be-here"
     profile.write_text(json.dumps(content), encoding="utf-8")
     with pytest.raises(ValidationError, match="不允许"):
+        Settings(_env_file=env)
+
+
+def test_legacy_profile_inherits_web_defaults_and_tracks_policy_only(tmp_path):
+    env, profile = profile_config(tmp_path)
+    current = Settings(_env_file=env)
+    content = json.loads(profile.read_text(encoding="utf-8"))
+    for name in WEB_PIPELINE_FIELDS:
+        del content["settings"][name]
+    profile.write_text(json.dumps(content), encoding="utf-8")
+    legacy = Settings(_env_file=env)
+    assert not legacy.web_search_enabled
+    assert pipeline_fingerprint(legacy) == pipeline_fingerprint(current)
+    assert pipeline_fingerprint(legacy) != pipeline_fingerprint(
+        legacy.model_copy(update={"web_search_provider": "exa"})
+    )
+    assert pipeline_fingerprint(legacy) == pipeline_fingerprint(
+        legacy.model_copy(update={"exa_api_key": "other-private-key"})
+    )
+    content["settings"]["exa_api_key"] = "private-key"
+    profile.write_text(json.dumps(content), encoding="utf-8")
+    with pytest.raises(ValidationError, match="不得包含凭据"):
         Settings(_env_file=env)
 
 

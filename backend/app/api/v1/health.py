@@ -48,6 +48,7 @@ async def system(services=Depends(container)):
         "vector_backend": settings.vector_backend,
         "embedding_provider": settings.embedding_provider,
         "web_search_enabled": settings.web_search_enabled,
+        "web_search": services.web.status(),
         "graph_enabled": settings.graph_enabled,
         "knowledge_domain": settings.knowledge_domain,
         "langfuse_enabled": settings.langfuse_enabled,

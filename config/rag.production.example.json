@@ -72,6 +72,13 @@
     "retrieval_top_k": 4,
     "semantic_chunking": true,
     "vector_backend": "milvus",
-    "web_search_enabled": false
+    "web_search_enabled": false,
+    "web_search_provider": "tavily",
+    "web_search_max_results": 3,
+    "web_search_timeout": 20.0,
+    "web_search_max_concurrency": 4,
+    "web_search_content_max_chars": 5000,
+    "web_search_failure_mode": "error",
+    "tavily_search_depth": "basic"
   }
 }

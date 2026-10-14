@@ -60,6 +60,8 @@ uv run --inexact python -m app.evaluation.audit --output ../test-results/pipelin
 
 `aligned=true` 且两个 SHA-256 指纹相同表示有效 RAG 参数一致。API `/system` 也提供 `pipeline_fingerprint`，评测 manifest 保存参数和实现指纹。审计通过不表示 HTTPS、备份或生产数据库已经部署验收。
 
+联网策略也纳入指纹，Tavily / Exa 密钥仍仅放环境文件。旧版 `version=1` JSON 缺少新增联网字段时，按[联网默认值](WEB_SEARCH.md#参数)补齐，原有联网开关保持不变；如需改动，在 JSON 中显式添加字段。升级后的策略 / 实现指纹与历史 run 不同，后续评测使用新 run，不改写历史报告。仅增加或修改联网配置无需重建知识库向量索引。
+
 ## 隔离与重建
 
 - 评测独立使用 SQLite、数据密钥、账号与 JWT；生产模板使用 PostgreSQL。

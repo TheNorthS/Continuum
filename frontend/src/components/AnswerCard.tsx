@@ -15,6 +15,11 @@ export function Sources({ sources }: { sources: Source[] }) {
           本次模型精排不可用，已按配置回退为 RRF 融合排序。
         </p>
       )}
+      {sources.some((source) => source.metadata.web_status === 'partial') && (
+        <p className="notice" role="status">
+          部分网络搜索服务暂不可用，本次回答仅基于成功返回并通过审查的来源。
+        </p>
+      )}
       {sources.map((source, i) => (
         <details key={source.id} className="source">
           <summary>
@@ -24,6 +29,14 @@ export function Sources({ sources }: { sources: Source[] }) {
             <ChevronDown size={14} />
           </summary>
           <p>{source.text}</p>
+          {!!source.metadata.web_providers?.length && (
+            <small>
+              网络来源 ·{' '}
+              {source.metadata.web_providers
+                .map((provider) => ({ tavily: 'Tavily', exa: 'Exa' })[provider] || provider)
+                .join(' + ')}
+            </small>
+          )}
           {source.metadata.rerank_status === 'ranked' && typeof source.rerank_score === 'number' && (
             <small>
               模型精排分数：{source.rerank_score.toFixed(4)} · {source.metadata.rerank_model}

@@ -53,6 +53,14 @@ export function System() {
           <p>
             向量模型：{info?.embedding_provider} · 联网搜索：{info?.web_search_enabled ? '开启' : '关闭'}
           </p>
+          {info?.web_search && (
+            <p>
+              搜索服务：{{ tavily: 'Tavily', exa: 'Exa', hybrid: 'Tavily + Exa' }[info.web_search.provider]}
+              {' · '}最多 {info.web_search.max_results} 条来源
+              <br />
+              选定知识库时仅使用库内资料。
+            </p>
+          )}
         </section>
         <section>
           <ShieldCheck />
