@@ -242,7 +242,7 @@ async def test_live_pipeline_with_provider_protocol(settings, sample):
             content = '{"relevant":true}'
         elif "sources" in payload and "answer" in payload:
             tasks.append("grounding")
-            content = '{"supported":true}'
+            content = '{"supported":true,"issues":[]}'
         elif "answer" in payload:
             tasks.append("usefulness")
             content = '{"useful":true}'

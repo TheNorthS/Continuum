@@ -21,7 +21,10 @@ class ScriptedLLM:
             "route": {"route": self.route},
             "agent": {"route": self.route},
             "relevance": {"relevant": self.relevant},
-            "grounding": {"supported": self.supported},
+            "grounding": {
+                "supported": self.supported,
+                "issues": [] if self.supported else [{"claim": "当前陈述", "reason": "资料未给出该结论"}],
+            },
             "usefulness": {"useful": self.useful},
             "rewrite": "rewritten query",
             "contextualize": "standalone question",

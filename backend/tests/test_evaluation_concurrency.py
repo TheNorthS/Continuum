@@ -150,7 +150,7 @@ async def test_two_question_chat_arms_are_isolated_and_share_model_gate(settings
                 return payload["original_question"] + ":" + payload["sources"][0]["text"]
             return {
                 "relevance": {"relevant": True},
-                "grounding": {"supported": True},
+                "grounding": {"supported": True, "issues": []},
                 "usefulness": {"useful": True},
             }[task]
 

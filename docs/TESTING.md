@@ -8,6 +8,12 @@
 
 按 [评测配置](EVALUATION.md) 填写三个服务的 Key，安装 `evaluation` extra。使用 `python -m app.evaluation.run` 运行 T2Retrieval 检索与 CRUD-RAG 问答的固定子集对照；命令、指标和限制见 [完整方案](EVALUATION_PLAN.md)。`tests/test_evaluation.py` 校验标准指标、空结果分母、数据标签不入索引、固定采样、共享候选池与恢复逻辑。
 
+## 事实依据反馈修正
+
+在 `backend` 运行 `uv run --inexact pytest -q tests/test_grounding_feedback.py tests/test_workflow.py tests/test_moderation.py`。覆盖 Grounding JSON 协议、失败原因传入下一轮、同一资料下修正后重新评分、次数上限、切换资料 / 新一轮清空反馈，以及反馈审查、API / SSE / 历史和正文追踪隔离。
+
+这些是模拟模型响应的工程回归，不证明真实模型的幻觉率下降。真实质量对照需使用新评测 run，保留历史成绩。
+
 ## 模型精排验收
 
 检索缓存版本专项：`tests/test_retrieval_revision.py` 覆盖原地片段变更、事务回滚、并发递增、跨库范围、撤权重授、固定长度指纹及旧库迁移；`tests/test_retrieval_revision_postgres.py` 在配置 `RAGE_TEST_POSTGRES_URL` 后验证生产 SQL 方言，使用隔离测试数据库，不使用业务库。

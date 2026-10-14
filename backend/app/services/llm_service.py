@@ -3,10 +3,14 @@ import json
 import re
 from contextlib import nullcontext
 
+from app.agents.grounding import GroundingVerdict
 from app.common.errors import AppError
 from app.infrastructure.http import post_json
 from app.knowledge.rag.embedding import tokenize
 from app.prompts.rag import BASE, PROMPTS
+
+# Candidate answers and grader feedback remain private even with content tracing enabled.
+PRIVATE_CONTENT_TASKS = frozenset({"generate", "direct", "grounding", "usefulness"})
 
 
 class LLMService:
@@ -23,8 +27,8 @@ class LLMService:
                     kind="generation",
                     model=self.settings.llm_model or "demo",
                     metadata={"task": task, "mode": self.settings.mode},
-                    # Unreviewed candidates must not escape via tracing before the output guard runs.
-                    input=None if task in {"generate", "direct"} else payload,
+                    # Intermediate answers/feedback must not escape before the final gates.
+                    input=None if task in PRIVATE_CONTENT_TASKS else payload,
                 )
                 if self.tracing
                 else nullcontext()
@@ -34,7 +38,7 @@ class LLMService:
             try:
                 async with context as observation:
                     result = await self._call(task, payload, observation)
-                    if observation and task not in {"generate", "direct"}:
+                    if observation and task not in PRIVATE_CONTENT_TASKS:
                         observation.update(output=result)
                     return result
             finally:
@@ -131,6 +135,8 @@ class LLMService:
             if not structured:
                 return content.strip()
             value = json.loads(content)
+            if task == "grounding":
+                return GroundingVerdict.model_validate(value).model_dump()
             if task == "extract_graph":
                 from app.knowledge.graph.extraction import Extraction
 
@@ -139,7 +145,6 @@ class LLMService:
                 "route": "route",
                 "agent": "route",
                 "relevance": "relevant",
-                "grounding": "supported",
                 "usefulness": "useful",
             }[task]
             if task in {"route", "agent"}:
@@ -165,7 +170,7 @@ class LLMService:
         if task == "relevance":
             return {"relevant": bool(set(tokenize(data["question"])) & set(tokenize(data["document"])))}
         if task == "grounding":
-            return {"supported": True}
+            return {"supported": True, "issues": []}
         if task == "usefulness":
             return {"useful": True}
         if task == "contextualize":

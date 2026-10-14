@@ -1,3 +1,4 @@
+import json
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -17,10 +18,12 @@ class RAGState(TypedDict, total=False):
     generations: int
     web_used: bool
     supported: bool
+    grounding_feedback: list[dict]
     useful: bool
     status: str
 
 
+# 集中维护工作流节点名称，为工作流事件提供可读的中文说明。
 LABELS = {
     "route": "理解问题并选择数据源",
     "retrieve": "混合检索知识库",
@@ -40,7 +43,9 @@ class Orchestrator:
     def __init__(self, settings, llm, knowledge, web, tracing=None, moderation=None):
         self.settings, self.llm, self.knowledge, self.web_search = settings, llm, knowledge, web
         self.moderation = moderation
+        # 创建执行图构建器
         workflow = StateGraph(RAGState)
+        # 批量注册节点
         for name in LABELS:
             action = getattr(self, name)
             if tracing:
@@ -68,13 +73,17 @@ class Orchestrator:
         )
         workflow.add_edge("direct", END)
         workflow.add_edge("abstain", END)
+        # 编译工作流，得到可以执行的图对象
         self.graph = workflow.compile()
 
     async def route(self, state):
         query = state["original_question"]
+        # 指代消解
         if state["history"]:
             query = await self.llm.call("contextualize", {"question": query, "history": state["history"]})
+        # 是否设置了知识库作用域
         if knowledge_scope.get() is not None:
+            # 控制检索的长度
             return {"query": query[:4000], "route": "retrieve"}
         value = await self.llm.call(
             "agent" if state["mode"] == "agentic" else "route",
@@ -86,7 +95,7 @@ class Orchestrator:
         sources = await self.knowledge.search(state["query"], self.settings.retrieval_top_k)
         if self.moderation:
             sources = await self.moderation.filter_sources(sources)
-        return {"sources": sources}
+        return {"sources": sources, "grounding_feedback": []}
 
     async def grade_documents(self, state):
         sources = []
@@ -112,6 +121,7 @@ class Orchestrator:
         return "abstain"
 
     def after_documents(self, state):
+        # 答案生成次数是否达到上限
         if state["generations"] >= self.settings.max_generations:
             return "abstain"
         return "generate" if state["sources"] else self.correction(state)
@@ -120,15 +130,20 @@ class Orchestrator:
         query = await self.llm.call(
             "rewrite", {"original_question": state["original_question"], "query": state["query"]}
         )
-        return {"query": query[:4000], "rewrites": state["rewrites"] + 1, "sources": []}
+        return {
+            "query": query[:4000],
+            "rewrites": state["rewrites"] + 1,
+            "sources": [],
+            "grounding_feedback": [],
+        }
 
     async def web(self, state):
         if knowledge_scope.get() is not None:
-            return {"sources": [], "web_used": False}
+            return {"sources": [], "web_used": False, "grounding_feedback": []}
         sources = await self.web_search.search(state["query"])
         if self.moderation:
             sources = await self.moderation.filter_sources(sources)
-        return {"sources": sources, "web_used": True}
+        return {"sources": sources, "web_used": True, "grounding_feedback": []}
 
     def after_web(self, state):
         return (
@@ -138,25 +153,30 @@ class Orchestrator:
         )
 
     async def generate(self, state):
-        answer = await self.llm.call(
-            "generate",
-            {
-                "original_question": state["original_question"],
-                "history": state["history"],
-                "sources": state["sources"],
-            },
-        )
+        payload = {
+            "original_question": state["original_question"],
+            "history": state["history"],
+            "sources": state["sources"],
+        }
+        feedback = state.get("grounding_feedback", [])
+        if feedback:
+            # Grader output is untrusted model text; review it before the next model call.
+            if self.moderation:
+                await self.moderation.guard(json.dumps(feedback, ensure_ascii=False), "output")
+            payload.update(previous_answer=state["answer"], grounding_feedback=feedback)
+        answer = await self.llm.call("generate", payload)
         if self.moderation:
             await self.moderation.guard(answer, "output")
-        return {"answer": answer, "generations": state["generations"] + 1}
+        return {"answer": answer, "generations": state["generations"] + 1, "grounding_feedback": []}
 
     async def grade_answer(self, state):
-        supported = (
-            await self.llm.call("grounding", {"sources": state["sources"], "answer": state["answer"]})
-        )["supported"]
+        # 答案是否有资料依据
+        grounding = await self.llm.call("grounding", {"sources": state["sources"], "answer": state["answer"]})
+        supported = grounding["supported"]
         useful = (
             supported
             and (
+                # 答案是否真正回答问题
                 await self.llm.call(
                     "usefulness", {"original_question": state["original_question"], "answer": state["answer"]}
                 )
@@ -164,6 +184,7 @@ class Orchestrator:
         )
         return {
             "supported": supported,
+            "grounding_feedback": grounding["issues"] if not supported else [],
             "useful": useful,
             "status": "demo" if self.settings.mode == "demo" else "answered",
         }
@@ -182,6 +203,7 @@ class Orchestrator:
             "answer": "现有资料不足以可靠回答这个问题。请补充相关文档或缩小问题范围。",
             "status": "insufficient",
             "sources": [],
+            "grounding_feedback": [],
         }
 
     async def direct(self, state):
@@ -203,6 +225,7 @@ class Orchestrator:
             rewrites=0,
             generations=0,
             web_used=False,
+            grounding_feedback=[],
             sources=[],
         )
         trace = []

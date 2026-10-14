@@ -362,7 +362,7 @@ async def test_audit_failure_and_length_limit_cannot_allow(settings):
         await services.close()
 
 
-@pytest.mark.parametrize("task", ["generate", "direct"])
+@pytest.mark.parametrize("task", ["generate", "direct", "grounding", "usefulness"])
 async def test_real_llm_adapter_never_exports_unreviewed_generation_text(settings, task):
     settings.mode = "live"
     settings.moderation_backend = "local"
@@ -384,9 +384,16 @@ async def test_real_llm_adapter_never_exports_unreviewed_generation_text(setting
             exported.append(data)
             return Observation()
 
+    content = (
+        json.dumps({"supported": False, "issues": [{"claim": "UNREVIEWED-CONTEXT", "reason": HARMFUL}]})
+        if task == "grounding"
+        else json.dumps({"useful": True})
+        if task == "usefulness"
+        else HARMFUL
+    )
     async with httpx.AsyncClient(
         transport=httpx.MockTransport(
-            lambda request: httpx.Response(200, json={"choices": [{"message": {"content": HARMFUL}}]})
+            lambda request: httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
         )
     ) as provider:
         services.llm.client = provider
@@ -394,12 +401,45 @@ async def test_real_llm_adapter_never_exports_unreviewed_generation_text(setting
             await services.start()
             services.tracing.client = Remote()
             answer = await services.llm.call(
-                task, {"original_question": "正常问题", "sources": [{"text": "UNREVIEWED-CONTEXT"}]}
+                task,
+                {
+                    "original_question": "正常问题",
+                    "sources": [{"text": "UNREVIEWED-CONTEXT"}],
+                    "answer": "UNREVIEWED-CONTEXT",
+                },
             )
-            with pytest.raises(ModerationBlocked):
-                await services.moderation.guard(answer, "output")
+            if task in {"generate", "direct"}:
+                with pytest.raises(ModerationBlocked):
+                    await services.moderation.guard(answer, "output")
             encoded = json.dumps(exported, ensure_ascii=False)
             assert HARMFUL not in encoded and "UNREVIEWED-CONTEXT" not in encoded
         finally:
             services.tracing.client = None
             await services.close()
+
+
+@pytest.mark.parametrize("failure", ["blocked", "unavailable"])
+async def test_grounding_feedback_must_pass_review_before_regeneration(settings, monkeypatch, failure):
+    services = Container(settings)
+    call = AsyncMock(side_effect=AssertionError("unreviewed feedback must not reach generation"))
+    monkeypatch.setattr(services.llm, "call", call)
+    try:
+        await services.start()
+        if failure == "unavailable":
+            monkeypatch.setattr(services.moderation, "_classify", AsyncMock(side_effect=TimeoutError()))
+        with pytest.raises(ModerationBlocked if failure == "blocked" else AppError):
+            await services.orchestrator.generate(
+                {
+                    "original_question": "普通问题",
+                    "history": [],
+                    "sources": [],
+                    "generations": 1,
+                    "answer": "上一轮答案",
+                    "grounding_feedback": [{"claim": "某陈述", "reason": HARMFUL}],
+                }
+            )
+        call.assert_not_awaited()
+        assert HARMFUL not in json.dumps(services.security.audit_list(limit=200), ensure_ascii=False)
+        assert HARMFUL not in json.dumps(list(services.tracing.recent), ensure_ascii=False)
+    finally:
+        await services.close()
