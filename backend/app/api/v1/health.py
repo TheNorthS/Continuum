@@ -49,6 +49,7 @@ async def system(services=Depends(container)):
         "embedding_provider": settings.embedding_provider,
         "web_search_enabled": settings.web_search_enabled,
         "web_search": services.web.status(),
+        "vision": {"configured": services.vision.configured, "model": settings.vision_model or None},
         "graph_enabled": settings.graph_enabled,
         "knowledge_domain": settings.knowledge_domain,
         "langfuse_enabled": settings.langfuse_enabled,

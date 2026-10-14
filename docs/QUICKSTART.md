@@ -90,7 +90,7 @@ uv run --inexact python -m app.cli verify
 
 随后使用首页脚本启动前后端，登录、选择知识库并提问。管理员可在“账号与权限”创建用户和角色。CLI 创建用户可运行 `uv run --inexact python -m app.cli create-user alice --role user`，密码以交互方式输入。配置中的初始管理员密码不会覆盖已有账号。
 
-当前原生格式为 UTF-8 `.md`、`.markdown`、`.txt`。PDF、Office、图片和扫描件需先转换；原生解析与 OCR 尚未提供。数据与文件范围见[数据目录](../data/README.md)。
+知识库导入支持 UTF-8 `.md`、`.markdown`、`.txt`。聊天附件另支持图片、PDF、DOCX，可关闭知识库后仅根据附件作答；附件不做向量化，视觉模型需单独配置，见[多模态与空间管理](ATTACHMENTS.md)。数据与文件范围见[数据目录](../data/README.md)。
 
 ## 可选联网补充
 

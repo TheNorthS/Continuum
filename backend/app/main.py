@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException
 
 from app.api.middleware import OperationalMiddleware
 from app.api.security_middleware import SecurityMiddleware
-from app.api.v1 import auth, chat, graph, health, knowledge, observability, security
+from app.api.v1 import attachments, auth, chat, graph, health, knowledge, observability, security
 from app.common.errors import AppError
 from app.common.redaction import RedactionFilter
 from app.config import Settings
@@ -81,6 +81,7 @@ def create_app(settings: Settings | None = None):
         return error(request, "internal_error", "服务内部错误，请稍后重试", 500)
 
     for router in (
+        attachments.router,
         auth.router,
         chat.router,
         knowledge.router,

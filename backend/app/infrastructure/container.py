@@ -12,6 +12,7 @@ from app.infrastructure.tracing import Tracing
 from app.knowledge.rag.document_processor import DocumentProcessor
 from app.knowledge.rag.embedding import Embedder
 from app.knowledge.rag.local_store import LocalStore
+from app.services.attachment_service import AttachmentService
 from app.services.chat_service import ChatService
 from app.services.graph_service import GraphService
 from app.services.knowledge_service import KnowledgeService
@@ -19,6 +20,7 @@ from app.services.llm_service import LLMService
 from app.services.moderation_service import ModerationService
 from app.services.rerank_service import Reranker
 from app.services.security_service import SecurityService
+from app.services.vision_service import VisionService
 from app.services.web_search import WebSearch
 from app.utils.security import hash_password
 
@@ -88,6 +90,9 @@ class Container:
         # 创建联网搜索服务，并加入链路追踪
         self.web = WebSearch(settings, self.http)
         self.web.tracing = self.tracing
+        self.vision = VisionService(settings, self.http, self.tracing)
+        self.attachments = AttachmentService(settings, self.db, self.vision, self.moderation)
+        self.repository.attachments = self.attachments
         # Agent系统的编排层
         self.orchestrator = Orchestrator(
             settings, self.llm, self.knowledge, self.web, self.tracing, self.moderation
@@ -96,6 +101,7 @@ class Container:
         self.db.instrument(self.monitoring)
         # 聊天业务服务
         self.chat = ChatService(settings, self.repository, self.orchestrator, self.moderation)
+        self.chat.attachments = self.attachments
         self.registry = self.monitoring.registry
         self.requests = self.monitoring.requests
         self.latency = self.monitoring.latency

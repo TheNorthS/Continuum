@@ -127,6 +127,7 @@ class Encrypted(TypeDecorator):
 
 
 FIELDS = {
+    "attachments": {"filename": False, "payload": True},
     "conversations": {"title": False},
     "messages": {"content": False, "details": True},
     "documents": {"filename": False, "error": False, "graph_error": False},

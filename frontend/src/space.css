@@ -1,0 +1,172 @@
+.space-policy {
+  color: #64748b;
+  line-height: 1.7;
+  max-width: 760px;
+}
+.space-usage {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  margin: 18px 0;
+}
+.space-usage progress {
+  width: 160px;
+  height: 8px;
+  accent-color: #0d9488;
+}
+.space-usage small {
+  width: 100%;
+  color: #64748b;
+}
+.space-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  margin: 18px 0;
+}
+.space-toolbar input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 11px 14px;
+}
+.attachment-list {
+  display: grid;
+  gap: 10px;
+}
+.attachment-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+.attachment-row > svg {
+  flex-shrink: 0;
+  color: #0f766e;
+}
+.attachment-row button {
+  padding: 8px;
+}
+.attachment-row .attachment-name {
+  flex: 1;
+  text-align: left;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+}
+.attachment-name strong {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.attachment-name small {
+  display: block;
+  color: #64748b;
+  margin-top: 6px;
+}
+.attachment-preview {
+  width: min(850px, 94vw);
+  max-height: 85vh;
+  overflow: auto;
+}
+.attachment-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 55vh;
+  margin: 10px auto;
+  object-fit: contain;
+}
+.attachment-preview pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.8;
+  background: #f8fafc;
+  padding: 18px;
+  border-radius: 10px;
+  max-height: 55vh;
+  overflow: auto;
+}
+.attachment-preview h2 {
+  overflow-wrap: anywhere;
+}
+.attachment-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 8px 0;
+}
+.attachment-chips > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #cce7e3;
+  background: #f0fdfa;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.attachment-chips button {
+  padding: 2px;
+  background: transparent;
+  border: 0;
+}
+.knowledge-toggle {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.knowledge-toggle input {
+  accent-color: #0d9488;
+}
+.space-modal {
+  width: min(880px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+  position: relative;
+}
+.space-picker {
+  padding: 14px 0;
+}
+.space-picker .page-heading {
+  margin: 14px 0;
+}
+.space-picker h1 {
+  font-size: 24px;
+}
+.space-close {
+  float: right;
+}
+.chat-scope-bar {
+  flex-wrap: wrap;
+}
+@media (max-width: 600px) {
+  .attachment-row {
+    gap: 7px;
+    padding: 10px;
+  }
+  .space-usage progress {
+    width: 100px;
+  }
+  .composer-actions > span {
+    display: none;
+  }
+  .space-page .page-heading {
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

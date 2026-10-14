@@ -3,6 +3,7 @@ import { Activity, BookOpen, Layers3, LogOut, Menu, MessageSquare, Plus, Trash2,
 import { Login } from './pages/Login';
 import { Chat } from './pages/Chat';
 import { Knowledge } from './pages/Knowledge';
+import { Space } from './pages/Space';
 import { System } from './pages/System';
 import { KnowledgeGraph } from './pages/KnowledgeGraph';
 import { Observability } from './pages/Observability';
@@ -22,6 +23,19 @@ export default function App() {
   const [info, setInfo] = useState<SystemInfo | null>(null);
   const [error, setError] = useState('');
   const [deleteId, setDeleteId] = useState('');
+  function rememberConversation(id: string) {
+    setSelected(id);
+    // 这里只记住当前页面要打开哪个会话；附件选择本身存于服务端数据库。
+    const uid = useSession.getState().user?.id;
+    if (uid)
+      try {
+        const key = `rag-e:conversation:${uid}`;
+        if (id) sessionStorage.setItem(key, id);
+        else sessionStorage.removeItem(key);
+      } catch {
+        /* 浏览器禁用存储时，仍可从侧栏重新打开会话恢复附件。 */
+      }
+  }
   const refresh = () =>
     api<Conversation[]>('/conversations')
       .then(setConversations)
@@ -38,16 +52,29 @@ export default function App() {
     }
     let active = true;
     const controller = new AbortController();
-    api<User>('/auth/me', { signal: controller.signal })
+    const identity = api<User>('/auth/me', { signal: controller.signal })
       .then((u) => {
         if (active) useSession.getState().login(useSession.getState().token, u);
+        return u;
       })
       .catch((e) => {
         if (active) setError(e.message);
       });
-    api<Conversation[]>('/conversations', { signal: controller.signal })
-      .then((data) => {
-        if (active) setConversations(data);
+    Promise.all([identity, api<Conversation[]>('/conversations', { signal: controller.signal })])
+      .then(([currentUser, data]) => {
+        if (active) {
+          setConversations(data);
+          // 刷新时 user 初始为空，必须等待 /auth/me，不能与会话列表的返回顺序竞争。
+          const uid = currentUser?.id;
+          if (uid)
+            try {
+              const saved = sessionStorage.getItem(`rag-e:conversation:${uid}`);
+              if (saved && data.some((c) => c.id === saved)) setSelected((current) => current || saved);
+              else if (saved) sessionStorage.removeItem(`rag-e:conversation:${uid}`);
+            } catch {
+              /* 会话列表仍可正常使用。 */
+            }
+        }
       })
       .catch((e) => {
         if (active) setError(e.message);
@@ -87,14 +114,14 @@ export default function App() {
   }
   function select(id: string) {
     setInitialBaseIds(undefined);
-    setSelected(id);
+    rememberConversation(id);
     setPage('chat');
     setMenu(false);
   }
   async function remove(id: string) {
     try {
       await api(`/conversations/${id}`, { method: 'DELETE' });
-      if (selected === id) setSelected('');
+      if (selected === id) rememberConversation('');
       setDeleteId('');
       await refresh();
     } catch (e) {
@@ -118,6 +145,7 @@ export default function App() {
           {[
             { id: 'chat', label: '知识问答', icon: MessageSquare },
             { id: 'knowledge', label: '知识库', icon: BookOpen },
+            { id: 'space', label: '空间管理', icon: Layers3 },
             { id: 'system', label: '系统概览', icon: Activity },
             { id: 'graph', label: '知识图谱', icon: Layers3 },
             ...(can('monitor.read') ? [{ id: 'observability', label: '监控与追踪', icon: Activity }] : []),
@@ -193,6 +221,7 @@ export default function App() {
                 {
                   chat: '知识问答',
                   knowledge: '知识库',
+                  space: '空间管理',
                   system: '系统概览',
                   graph: '知识图谱',
                   observability: '监控与追踪',
@@ -218,12 +247,14 @@ export default function App() {
         {page === 'chat' ? (
           <Chat
             selected={selected}
-            onSelect={setSelected}
+            onSelect={rememberConversation}
             onUpdated={() => void refresh()}
             onBusy={setBusy}
             initialBaseIds={initialBaseIds}
             onManage={() => navigate('knowledge')}
           />
+        ) : page === 'space' ? (
+          <Space />
         ) : page === 'security' ? (
           <SecurityAdmin />
         ) : page === 'account' ? (
@@ -236,7 +267,7 @@ export default function App() {
           <Knowledge
             onAsk={(id) => {
               setInitialBaseIds([id]);
-              setSelected('');
+              rememberConversation('');
               navigate('chat');
             }}
           />

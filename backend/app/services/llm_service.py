@@ -10,7 +10,7 @@ from app.knowledge.rag.embedding import tokenize
 from app.prompts.rag import BASE, PROMPTS
 
 # Candidate answers and grader feedback remain private even with content tracing enabled.
-PRIVATE_CONTENT_TASKS = frozenset({"generate", "direct", "grounding", "usefulness"})
+PRIVATE_CONTENT_TASKS = frozenset({"generate", "direct", "general", "grounding", "usefulness"})
 
 
 class LLMService:
@@ -158,6 +158,8 @@ class LLMService:
             raise AppError("llm_format", "模型输出格式不符合要求，请检查 JSON 模式支持", 502) from exc
 
     def _demo(self, task, data):
+        if task == "general":
+            return "【本地演示】本轮未使用知识库或网络。配置真实 LLM 后可进行普通对话，也可以添加附件围绕资料提问。"
         if task == "extract_graph":
             from app.knowledge.graph.extraction import demo_extract
 

@@ -135,15 +135,17 @@ test('revoked saved scope cannot silently fall back to all accessible libraries'
   );
 });
 
-test('no accessible libraries provides an actionable empty state and disables sending', async () => {
+test('no accessible libraries defaults to ordinary chat without retrieving libraries', async () => {
   mocked.mockResolvedValue([]);
   const manage = vi.fn();
   render(<Chat selected="" {...props} onManage={manage} />);
-  await screen.findByText('先准备你的知识库');
+  await screen.findByText('从一个问题，开始对话。');
   fireEvent.change(screen.getByLabelText('输入问题'), { target: { value: '问题' } });
-  expect((screen.getByRole('button', { name: '发送问题' }) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.click(screen.getByRole('button', { name: '前往知识库' }));
-  expect(manage).toHaveBeenCalledOnce();
+  expect((screen.getByRole('button', { name: '发送问题' }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole('button', { name: '发送问题' }));
+  await screen.findByText('已完成回答');
+  expect(stream.mock.calls[0][5]).toBeUndefined();
+  expect(stream.mock.calls[0][6]).toMatchObject({ use_knowledge: false });
 });
 
 test('knowledge documents, retrieval test and chat shortcut all follow the active library', async () => {

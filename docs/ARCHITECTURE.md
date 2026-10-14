@@ -17,12 +17,15 @@ RAG-E 按 HTTP 接口、业务编排、知识处理和存储适配分层。前�
 | DocumentProcessor / Embedder | 章节解析、语义分组、长度切分及真实或演示向量 |
 | GraphService | 实体关系抽取、证据验证、授权图查询、路径与规则推理 |
 | WebSearch | Tavily / Exa 单路或并发搜索、URL 去重、来源归一化与 RRF 融合 |
+| AttachmentService / VisionService | 私有附件管理、文本解析与页面渲染、独立视觉识别，不做附件向量化 |
 | Repository | 业务状态、权限范围、会话和加密数据访问 |
 | Cache / Monitoring / Tracing | L1/L2 缓存、指标、分位数、告警和请求追踪 |
 
 SQL 是业务状态的权威来源；本地索引或 Milvus 执行检索。Neo4j、Redis L2 和外部 Langfuse 均按配置启用。共享客户端和检索实例以进程为单位复用，不跨 worker 共享内存。
 
 ## 问答编排
+
+聊天支持显式关闭知识库：无附件时进入普通对话节点，不执行检索；有附件时读取私人空间文件，图片通过视觉模型转为证据后进入生成及质量检查。开启知识库时可合并所选库与附件来源，选定附件不会扩大知识库授权范围。下图展示知识库问答分支；附件使用与限制见[多模态指南](ATTACHMENTS.md)。
 
 ![选定知识库的问答流程](assets/diagrams/qa-flow.svg)
 

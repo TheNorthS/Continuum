@@ -58,11 +58,12 @@ export async function streamAnswer(
   onStep: (step: Step) => void,
   signal: AbortSignal,
   baseIds?: string[],
+  options?: { use_knowledge?: boolean; attachment_ids?: string[] },
 ): Promise<Answer> {
   const request = new Request(new URL(`/api/v1/conversations/${id}/stream`, location.origin), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, mode, ...(baseIds ? { base_ids: baseIds } : {}) }),
+    body: JSON.stringify({ question, mode, ...(baseIds ? { base_ids: baseIds } : {}), ...options }),
     signal,
   });
   let response = await fetch(await signedRequest(request.clone(), useSession.getState().token));
@@ -91,4 +92,16 @@ export async function streamAnswer(
     await reader.cancel();
     reader.releaseLock();
   }
+}
+
+export async function attachmentBlob(id: string): Promise<Blob> {
+  const request = new Request(
+    new URL(`/api/v1/attachments/${encodeURIComponent(id)}/content`, location.origin),
+  );
+  let response = await fetch(await signedRequest(request.clone(), useSession.getState().token));
+  if (response.status === 401 && useSession.getState().refresh) {
+    await refreshSession();
+    response = await fetch(await signedRequest(request, useSession.getState().token));
+  }
+  return (await checked(response)).blob();
 }

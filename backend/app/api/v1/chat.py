@@ -5,7 +5,7 @@ import json
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
-from app.api.schemas import ChatRequest, ConversationCreate, ScopeRequest
+from app.api.schemas import AttachmentSelection, ChatRequest, ConversationCreate, ScopeRequest
 from app.common.errors import AppError
 from app.dependencies import container, current_user, require_permission
 
@@ -22,7 +22,12 @@ async def conversations(user=Depends(current_user), services=Depends(container))
 @router.post("", status_code=201)
 async def create(payload: ConversationCreate, user=Depends(current_user), services=Depends(container)):
     return await asyncio.to_thread(
-        services.repository.create_conversation, user["id"], payload.title, payload.base_ids
+        services.repository.create_conversation,
+        user["id"],
+        payload.title,
+        payload.base_ids,
+        payload.use_knowledge,
+        payload.attachment_ids,
     )
 
 
@@ -36,13 +41,26 @@ async def scope(
     conversation_id: str, payload: ScopeRequest, user=Depends(current_user), services=Depends(container)
 ):
     return await asyncio.to_thread(
-        services.repository.change_scope, conversation_id, user["id"], payload.base_ids
+        services.repository.change_scope, conversation_id, user["id"], payload.base_ids, payload.use_knowledge
     )
 
 
 @router.get("/{conversation_id}/messages")
 async def messages(conversation_id: str, user=Depends(current_user), services=Depends(container)):
     return await asyncio.to_thread(services.repository.history, conversation_id, user["id"])
+
+
+@router.patch("/{conversation_id}/attachments")
+async def attachments(
+    conversation_id: str,
+    payload: AttachmentSelection,
+    user=Depends(current_user),
+    services=Depends(container),
+):
+    # 独立保存选择，不必先发出一条问题；与生成共用会话租约，禁止并发覆盖。
+    return await asyncio.to_thread(
+        services.repository.change_attachments, conversation_id, user["id"], payload.attachment_ids
+    )
 
 
 @router.delete("/{conversation_id}", status_code=204)
@@ -55,7 +73,13 @@ async def answer(
     conversation_id: str, payload: ChatRequest, user=Depends(current_user), services=Depends(container)
 ):
     return await services.chat.answer(
-        conversation_id, user["id"], payload.question, payload.mode, base_ids=payload.base_ids
+        conversation_id,
+        user["id"],
+        payload.question,
+        payload.mode,
+        base_ids=payload.base_ids,
+        use_knowledge=payload.use_knowledge,
+        attachment_ids=payload.attachment_ids,
     )
 
 
@@ -64,7 +88,11 @@ async def stream(
     conversation_id: str, payload: ChatRequest, user=Depends(current_user), services=Depends(container)
 ):
     await asyncio.to_thread(
-        services.repository.check_conversation_scope, conversation_id, user["id"], payload.base_ids
+        services.repository.check_conversation_scope,
+        conversation_id,
+        user["id"],
+        payload.base_ids,
+        payload.use_knowledge,
     )
 
     async def events():
@@ -82,6 +110,8 @@ async def stream(
                     payload.mode,
                     emit,
                     base_ids=payload.base_ids,
+                    use_knowledge=payload.use_knowledge,
+                    attachment_ids=payload.attachment_ids,
                 )
                 await queue.put(("result", result))
             except AppError as exc:

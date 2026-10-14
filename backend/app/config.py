@@ -40,6 +40,16 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_thinking: Literal["default", "disabled", "enabled"] = "default"
     llm_timeout: float = Field(default=30, gt=0, le=120)
+    vision_base_url: str = "https://api.openai.com/v1"
+    vision_api_key: SecretStr = SecretStr("")
+    vision_model: str = ""
+    vision_timeout: float = Field(default=45, gt=0, le=120)
+    vision_max_concurrency: int = Field(default=2, ge=1, le=8)
+    attachment_space_bytes: int = Field(default=100 * 1024 * 1024, ge=1024, le=1024 * 1024 * 1024)
+    attachment_max_files: int = Field(default=100, ge=1, le=1000)
+    attachment_max_per_message: int = Field(default=4, ge=1, le=10)
+    attachment_max_chars: int = Field(default=24000, ge=1000, le=60000)
+    attachment_max_images: int = Field(default=12, ge=1, le=20)
     request_timeout: float = Field(default=150, gt=0, le=160)
     embedding_provider: Literal["hash", "huggingface", "api"] = "hash"
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
@@ -161,6 +171,20 @@ class Settings(BaseSettings):
         from urllib.parse import urlsplit
 
         from app.safety.policy import CATEGORIES
+
+        if self.vision_model:
+            endpoint = urlsplit(self.vision_base_url)
+            if (
+                endpoint.scheme not in {"http", "https"}
+                or not endpoint.hostname
+                or endpoint.username
+                or endpoint.password
+                or endpoint.query
+                or endpoint.fragment
+            ):
+                raise ValueError("视觉模型需要有效的 HTTP(S) API 根地址")
+            if not self.vision_api_key.get_secret_value().strip():
+                raise ValueError("视觉模型需要单独配置 vision_api_key")
 
         if self.rerank_provider != "none" and not self.rerank_model.strip():
             raise ValueError("启用精排需要配置 rerank_model")

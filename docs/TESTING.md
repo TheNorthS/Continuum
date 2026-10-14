@@ -26,6 +26,10 @@ Milvus 评测默认读取 `.env.eval` 的后端配置，生成按 run 隔离的 
 
 ## 知识库范围与界面验收
 
+`tests/test_conversation_attachments.py` 覆盖会话附件的创建/更新、重启恢复、省略与空数组语义、失效提示、锁冲突、授权和 `0008` 升级；前端附件测试覆盖刷新恢复、保存失败和延迟响应不会串到其他会话。
+
+附件与多模态：`tests/test_attachments.py` 覆盖私有空间 CRUD、加密轮换、配额、PDF/DOCX/图片解析、不调用 Embedding 的附件问答、混合知识库来源、删除冲突及独立视觉模型协议。前端 `attachments.test.tsx` 验证空间文件操作、聊天上传 / 选择及知识库开关。真实视觉模型效果需配置后另行验收，见[附件指南](ATTACHMENTS.md)。
+
 `backend/tests/test_knowledge_scope.py` 覆盖单库、多库、范围缓存、保存与恢复、切换范围后不带旧上下文、空列表/无权限/撤权拒绝、SSE、并发隔离与最终引用归属检查。配置 `RAGE_TEST_NEO4J_URI` 和 `RAGE_TEST_REDIS_URL` 后还验证真实图谱与 Redis L2 的范围隔离。
 
 `frontend/src/components/knowledge-scope.test.tsx` 覆盖多选搜索、范围请求、失败回退、权限失效、空状态、当前库文档和检索测试联动。操作说明见 [知识库范围](KNOWLEDGE_SCOPE.md)。

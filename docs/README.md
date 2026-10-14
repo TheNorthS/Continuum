@@ -9,6 +9,7 @@
 | [快速开始](../README.md#快速开始) | 在本地或 Docker 中体验演示模式 |
 | [真实模型接入](QUICKSTART.md) | 配置 LLM、Embedding、Milvus 和文档导入 |
 | [知识库范围](KNOWLEDGE_SCOPE.md) | 单 / 多库问答、会话范围与授权 |
+| [多模态与个人空间](ATTACHMENTS.md) | 聊天附件、关闭知识库、图片理解、文件管理和迁移 |
 | [模型精排](RERANK.md) | 在线 API、本地 CrossEncoder、候选与异常策略 |
 | [联网检索](WEB_SEARCH.md) | Tavily / Exa 单路或双路并行、配置、来源与故障处理 |
 

@@ -42,6 +42,23 @@ class Conversation(Base):
     lock_until: Mapped[float] = mapped_column(Float, default=0)
     base_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)
     scope_start_id: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    use_knowledge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
+    # 持久保存附件 ID 和顺序，文件正文仍仅存于个人空间。
+    attachment_ids: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+
+
+class Attachment(Base):
+    __tablename__ = "attachments"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    filename: Mapped[str] = mapped_column(Encrypted("attachments.filename"))
+    media_type: Mapped[str] = mapped_column(String(100))
+    size: Mapped[int] = mapped_column(Integer)
+    storage_size: Mapped[int] = mapped_column(Integer)
+    text_chars: Mapped[int] = mapped_column(Integer)
+    image_count: Mapped[int] = mapped_column(Integer)
+    payload: Mapped[dict] = mapped_column(Encrypted("attachments.payload"), deferred=True)
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)
 
 
 class Message(Base):

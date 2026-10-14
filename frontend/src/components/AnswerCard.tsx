@@ -2,6 +2,30 @@ import { BookOpen, ChevronDown } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { Message, Source } from '../types';
+import { useState } from 'react';
+import { attachmentBlob } from '../services/api';
+
+function AttachmentDownload({ id, name }: { id: string; name: string }) {
+  const [error, setError] = useState('');
+  async function download() {
+    try {
+      const url = URL.createObjectURL(await attachmentBlob(id));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  }
+  return (
+    <>
+      <button onClick={() => void download()}>下载附件原文件</button>
+      {error && <small role="alert">{error}</small>}
+    </>
+  );
+}
 
 function safeLink(url?: string) {
   return url && /^https?:\/\//i.test(url) ? url : undefined;
@@ -46,7 +70,12 @@ export function Sources({ sources }: { sources: Source[] }) {
           {source.metadata.rerank_status === 'fallback' && (
             <small className="rerank-warning">本次精排服务不可用，已按配置回退为 RRF 融合排序。</small>
           )}
-          {safeLink(source.metadata.source) ? (
+          {source.metadata.attachment_id ? (
+            <AttachmentDownload
+              id={source.metadata.attachment_id}
+              name={source.metadata.filename || '附件'}
+            />
+          ) : safeLink(source.metadata.source) ? (
             <a href={safeLink(source.metadata.source)} target="_blank" rel="noopener noreferrer">
               查看原始来源 ↗
             </a>
@@ -76,6 +105,18 @@ export function AnswerCard({ message }: { message: Message }) {
         <div className="answer-scope">
           <BookOpen size={13} />
           <span>本次范围：{message.details.knowledge_scope.base_names.join(' · ')}</span>
+        </div>
+      )}
+      {assistant && message.details?.knowledge_scope?.use_knowledge === false && (
+        <div className="answer-scope">
+          未使用知识库 · {message.details.attachments?.length ? '依据所选附件作答' : '普通对话，未检索资料'}
+        </div>
+      )}
+      {!!message.details?.attachments?.length && (
+        <div className="attachment-chips">
+          {message.details.attachments.map((a) => (
+            <span key={a.id}>附件：{a.filename}</span>
+          ))}
         </div>
       )}
       {message.details?.status === 'blocked' && (

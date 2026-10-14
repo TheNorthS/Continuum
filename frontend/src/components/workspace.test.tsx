@@ -22,9 +22,45 @@ const chatApi = async (path: string) =>
 beforeEach(() => {
   vi.resetAllMocks();
   useSession.getState().logout();
+  sessionStorage.clear();
   Element.prototype.scrollIntoView = vi.fn();
 });
 afterEach(cleanup);
+
+test('refresh restores the remembered conversation after identity arrives, even if the list arrives first', async () => {
+  let resolveIdentity: (value: typeof user) => void = () => {};
+  const saved = {
+    id: 'a'.repeat(32),
+    filename: '恢复.txt',
+    media_type: 'text/plain',
+    size: 10,
+    storage_size: 20,
+    text_chars: 4,
+    image_count: 0,
+    created_at: 1,
+  };
+  useSession.setState({ token: 'refresh-token', user: null });
+  sessionStorage.setItem('rag-e:conversation:one', 'saved-chat');
+  apiMock.mockImplementation(async (path) => {
+    if (path === '/auth/me')
+      return new Promise((resolve) => {
+        resolveIdentity = resolve;
+      });
+    if (path === '/conversations') return [{ id: 'saved-chat', title: '恢复会话' }];
+    if (path === '/conversations/saved-chat')
+      return { id: 'saved-chat', use_knowledge: false, attachment_ids: [saved.id], attachments: [saved] };
+    if (path === '/system') return { mode: 'demo' };
+    return [];
+  });
+  render(<App />);
+  await waitFor(() => expect(apiMock).toHaveBeenCalledWith('/conversations', expect.anything()));
+  resolveIdentity(user);
+  await waitFor(() =>
+    expect(apiMock.mock.calls.map(([path]) => path)).toContain('/conversations/saved-chat'),
+  );
+  await screen.findByRole('button', { name: '移除附件 恢复.txt' });
+  expect(screen.getByText('已恢复此会话的附件选择。')).toBeTruthy();
+});
 
 test('login enters the workspace and loads knowledge management', async () => {
   apiMock.mockImplementation(async (path: string) => {

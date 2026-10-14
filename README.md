@@ -53,6 +53,7 @@ RAG-E 将文档导入、检索增强生成、图谱探索和账号权限整合�
 | 维度 | 已实现能力 |
 |---|---|
 | 📚 **多知识库工作台** | 单库 / 多库选择、会话范围记忆、文档状态与来源展开；问答范围贯穿检索、图谱、缓存和引用校验 |
+| 📎 **多模态与个人空间** | 聊天上传图片、PDF、DOCX、TXT / Markdown；独立视觉模型识别，附件不向量化，会话附件选择持久保存并自动恢复，支持空间管理及可选知识库作答 |
 | 🔍 **混合检索与模型精排** | BM25 + 稠密向量 + 可选图谱召回，RRF 融合后通过在线 API / 本地 CrossEncoder 精排 |
 | 🌐 **可选联网检索** | Tavily / Exa 单路或双路并行，URL 去重、RRF 融合、来源引用与内容审查；选库问答保持库内范围 |
 | 🤖 **有界 Agent 工作流** | LangGraph 自适应 RAG 与工具路由，串联资料相关性、问题改写、答案生成及事实依据检查 |
@@ -392,7 +393,7 @@ RAG-E/
 
 ### 当前边界
 
-- PDF、Word、Excel、PPT、图片和扫描件需要先转换为 Markdown / TXT；原生解析与 OCR 尚未接入。
+- 知识库导入使用 Markdown / TXT；聊天附件另支持图片、PDF、DOCX，含图内容由独立视觉模型识别，不进入知识库索引。Excel / PPT 和更完整的 Office 解析尚未接入。
 - 图谱、Redis L2 和 Langfuse 需要配置对应服务；启动默认演示不意味着这些集成已启用。
 - 内容审查与事实依据检查用于约束回答，效果仍需结合业务资料评测。
 - 大规模导入的持久化任务队列、企业 SSO 与独立组织目录属于后续扩展方向。
@@ -457,6 +458,7 @@ npm run build
 | 接入自己的模型和资料 | [模型配置](docs/QUICKSTART.md) · [精排接入](docs/RERANK.md) · [知识库范围](docs/KNOWLEDGE_SCOPE.md) |
 | 理解检索和问答链路 | [系统架构](docs/ARCHITECTURE.md) · [生产与评测共享参数](docs/SHARED_PIPELINE.md) |
 | 配置网络检索 | [Tavily / Exa 接入、双路融合与故障策略](docs/WEB_SEARCH.md) |
+| 图片、文件与普通对话 | [多模态附件、空间管理和视觉模型配置](docs/ATTACHMENTS.md) |
 | 管理账号、权限与内容审查 | [安全体系](docs/SECURITY.md) · [内容审查](docs/MODERATION.md) |
 | 启用图谱或排查性能 | [图谱、缓存、指标与追踪](docs/GRAPH_PERFORMANCE_OBSERVABILITY.md) |
 | 部署和维护服务 | [Docker 与备份](docs/DEPLOYMENT.md) · [Kubernetes](k8s/README.md) |
@@ -497,7 +499,7 @@ npm run build
 
 ### 📋 后续方向
 
-- [ ] PDF / Office 原生解析与 OCR
+- [ ] 扩展知识库导入的 PDF / Office 解析与 OCR（聊天附件已支持 PDF / DOCX / 图片）
 - [ ] 证据选择、跨片段补全与回答检查优化
 - [ ] 大规模文档导入的持久化任务队列
 - [ ] 企业 SSO 与独立组织目录

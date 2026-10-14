@@ -7,6 +7,10 @@ export interface User {
   must_change_password?: boolean;
 }
 export interface Conversation {
+  attachment_ids?: string[];
+  attachments?: Attachment[];
+  unavailable_attachment_ids?: string[];
+  use_knowledge?: boolean;
   id: string;
   title: string;
   created_at: number;
@@ -19,6 +23,7 @@ export interface Source {
   score: number;
   rerank_score?: number;
   metadata: {
+    attachment_id?: string;
     title?: string;
     filename?: string;
     source?: string;
@@ -38,7 +43,13 @@ export interface Step {
   generations: number;
 }
 export interface Answer {
-  knowledge_scope?: { base_ids: string[] | null; base_names: string[]; scope_start_id: number };
+  knowledge_scope?: {
+    base_ids: string[] | null;
+    base_names: string[];
+    scope_start_id: number;
+    use_knowledge?: boolean;
+  };
+  attachments?: Attachment[];
   safety?: { decision: 'allowed' | 'blocked'; stage?: string; policy_version?: string; backend: string };
   answer: string;
   sources: Source[];
@@ -52,7 +63,29 @@ export interface Message {
   id: number;
   role: string;
   content: string;
-  details?: Answer;
+  details?: Partial<Answer>;
+}
+
+export interface Attachment {
+  id: string;
+  filename: string;
+  media_type: string;
+  size: number;
+  storage_size: number;
+  text_chars: number;
+  image_count: number;
+  created_at: number;
+}
+export interface AttachmentSpace {
+  items: Attachment[];
+  used_bytes: number;
+  quota_bytes: number;
+  max_files: number;
+  max_upload_bytes: number;
+  max_per_message: number;
+  max_chars: number;
+  max_images: number;
+  vision_configured: boolean;
 }
 export interface KnowledgeDocument {
   can_write?: boolean;

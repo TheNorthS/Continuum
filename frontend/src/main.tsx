@@ -6,6 +6,7 @@ import './index.css';
 import './graph.css';
 import './security.css';
 import './knowledge.css';
+import './space.css';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
