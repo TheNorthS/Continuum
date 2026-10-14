@@ -1,3 +1,5 @@
+import hashlib
+import json
 import time
 
 from sqlalchemy import delete, func, select, update
@@ -12,6 +14,7 @@ from app.models.entities import (
     IndexProfile,
     KnowledgeBase,
     Message,
+    SecurityState,
     User,
     new_id,
 )
@@ -396,14 +399,26 @@ class Repository:
 
     def revision(self):
         with self.db.session() as s:
-            # IDs make deletions and equal-sized replacements invalidate retrieval cache across processes.
-            return ":".join(
-                s.scalars(
-                    select(Document.id)
-                    .where(Document.status == "ready", Document.id.in_(self.allowed_documents(s)))
-                    .order_by(Document.id)
-                )
+            if self.security is None:
+                raise RuntimeError("Authorization service not configured")
+            namespace = s.scalar(select(IndexProfile.signature).where(IndexProfile.key == "retrieval_cache"))
+            if not namespace or not namespace.get("namespace"):
+                raise RuntimeError("Retrieval revision is not initialized; apply database migrations")
+            acl_revision = s.scalar(select(SecurityState.version).where(SecurityState.id == "retrieval_acl"))
+            if acl_revision is None:
+                raise RuntimeError("Retrieval ACL revision is not initialized; apply database migrations")
+            visible = set(self.security.visible_bases(s))
+            scope = knowledge_scope.get()
+            if scope is not None:
+                visible.intersection_update(scope)
+            # Read O(visible bases) counters, never all document IDs or encrypted chunks.
+            versions = s.execute(
+                select(KnowledgeBase.id, KnowledgeBase.retrieval_revision)
+                .where(KnowledgeBase.id.in_(sorted(visible)))
+                .order_by(KnowledgeBase.id)
             )
+            payload = [namespace["namespace"], acl_revision, [list(row) for row in versions]]
+            return "r3:" + hashlib.sha256(json.dumps(payload, separators=(",", ":")).encode()).hexdigest()
 
     def stats(self):
         with self.db.session() as s:

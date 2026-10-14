@@ -171,8 +171,15 @@ class KnowledgeService:
 
     async def candidates(self, query, candidates):
         """The same ACL-filtered, fused candidate pool used by search and paired evaluation."""
-        revision = await asyncio.to_thread(self.repository.revision)
-        signature = f"v2:{revision}:{self.settings.vector_backend}:{self.settings.embedding_model}:{query}:{candidates}"
+        for _ in range(3):
+            revision = await asyncio.to_thread(self.repository.revision)
+            results = await self._candidates(query, candidates, revision)
+            if revision == await asyncio.to_thread(self.repository.revision):
+                return results
+        raise AppError("retrieval_changed", "资料或权限正在更新，请稍后重试", 503)
+
+    async def _candidates(self, query, candidates, revision):
+        signature = f"v3:{revision}:{self.settings.vector_backend}:{self.settings.embedding_model}:{query}:{candidates}"
         key = "rag-e:secure:retrieval:" + hashlib.sha256(signature.encode()).hexdigest()
 
         async def loader():

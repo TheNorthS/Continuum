@@ -10,6 +10,8 @@
 
 ## 模型精排验收
 
+检索缓存版本专项：`tests/test_retrieval_revision.py` 覆盖原地片段变更、事务回滚、并发递增、跨库范围、撤权重授、固定长度指纹及旧库迁移；`tests/test_retrieval_revision_postgres.py` 在配置 `RAGE_TEST_POSTGRES_URL` 后验证生产 SQL 方言，使用隔离测试数据库，不使用业务库。
+
 `tests/test_rerank.py` 覆盖候选扩充、精排后 Top-K、阈值、稳定排序、单/多库、授权前后过滤、图谱融合、加密缓存接入、API 响应索引校验、超时、并发、取消与回退标记。配置 `RAGE_TEST_RERANK_MODEL` 为已下载的本地 CrossEncoder 路径，可额外运行真实中文推理。
 
 Milvus 评测默认读取 `.env.eval` 的后端配置，生成按 run 隔离的 collection；`tests/test_evaluation_milvus.py` 验证旧数据只读、分块/向量逐值复用与模型空间一致性，HNSW 的 `ef` 至少覆盖请求候选数。真实服务回归设置 `RAGE_TEST_MILVUS_URI=http://127.0.0.1:19539`。
@@ -90,5 +92,5 @@ uv run --inexact --extra dev --extra milvus pytest -q -m external
 
 ## 外部集成
 
-CI 验证依赖锁、格式、测试、前端构建和两个容器镜像构建，并运行 Neo4j/Redis 集成作业。触发器为 `workflow_dispatch` 与 `pull_request`：普通 push 不单独运行；创建、重新打开或更新 PR 提交时自动运行。工作流进入默认分支后，可从 **Actions → RAG-E CI → Run workflow** 手动运行。
+CI 验证依赖锁、格式、测试、前端构建和两个容器镜像构建；后端作业提供临时 PostgreSQL 16，图谱集成作业提供 Neo4j/Redis。触发器为 `workflow_dispatch` 与 `pull_request`：普通 push 不单独运行；创建、重新打开或更新 PR 提交时自动运行。工作流进入默认分支后，可从 **Actions → RAG-E CI → Run workflow** 手动运行。
 Docker/Kubernetes/真实模型的实际运行结果应与单元测试结果区分记录，不能用模拟测试替代外部服务验收。

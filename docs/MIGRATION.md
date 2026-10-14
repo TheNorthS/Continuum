@@ -13,7 +13,9 @@
 
 ## 数据库 schema 升级
 
-RAG-E 使用 Alembic，迁移位于 [backend/app/database/migrations/versions](../backend/app/database/migrations/versions)。当前依次包含基础表、索引配置记录、图谱状态、安全与知识库授权、会话范围五个版本。
+RAG-E 使用 Alembic，迁移位于 [backend/app/database/migrations/versions](../backend/app/database/migrations/versions)。当前 head 为 `0006`，依次包含基础表、索引配置记录、图谱状态、安全与知识库授权、会话范围、检索事务版本六个版本。
+
+`0006` 增加 `knowledge_bases.retrieval_revision`、缓存命名空间和权限版本，并为 SQLite / PostgreSQL 安装文档、片段与权限变更触发器。现有资料保留，不重新调用 Embedding；版本读取改用固定长度指纹，旧缓存自然过期。详情见[检索版本](RETRIEVAL_REVISION.md)。
 
 在 `backend` 目录检查开发或独立测试数据库：
 

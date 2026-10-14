@@ -438,7 +438,7 @@ npm run build
 
 | 作业 | 检查内容 |
 |---|---|
-| **Backend** | 锁定依赖安装、Ruff、pytest 与覆盖率、发布文件检查、Compose 配置和后端镜像构建 |
+| **Backend** | 锁定依赖安装、Ruff、pytest 与覆盖率、临时 PostgreSQL 集成测试、发布文件检查、Compose 配置和后端镜像构建 |
 | **Frontend** | npm ci、Prettier、Vitest、TypeScript / Vite 构建、前端镜像构建 |
 | **Graph Integration** | 启动 Neo4j / Redis 服务，执行图谱与安全外部集成测试 |
 

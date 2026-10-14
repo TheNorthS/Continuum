@@ -16,6 +16,7 @@
 | 文档 | 内容 |
 |---|---|
 | [系统架构](ARCHITECTURE.md) | 分层、数据流、工作流与能力边界 |
+| [检索版本与缓存失效](RETRIEVAL_REVISION.md) | 每库事务版本、权限失效、并发与迁移 |
 | [图谱、性能与可观测性](GRAPH_PERFORMANCE_OBSERVABILITY.md) | Neo4j、缓存、并发、指标、告警与追踪 |
 | [账号与安全](SECURITY.md) | JWT、RBAC、资源授权、防重放、审计和加密 |
 | [内容审查](MODERATION.md) | 审查阶段、分类阈值、拦截与故障处理 |

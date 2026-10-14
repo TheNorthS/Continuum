@@ -17,13 +17,13 @@ class Monitoring:
         # Prometheus客户端的指标注册容器
         self.registry = CollectorRegistry()
         self.requests = Counter(
-            "rag_e_http_requests_total",# http请求累计次数
-            "HTTP requests",            # 指标类型
-            ["method", "route", "status"],# 三个标签维度
+            "rag_e_http_requests_total",  # http请求累计次数
+            "HTTP requests",  # 指标类型
+            ["method", "route", "status"],  # 三个标签维度
             registry=self.registry,
         )
-        # 直方图记录耗时分布 
-        self.latency = Histogram( 
+        # 直方图记录耗时分布
+        self.latency = Histogram(
             "rag_e_http_duration_seconds", "HTTP duration", ["route"], registry=self.registry
         )
         # 记录不同内部操作的成功和失败次数
@@ -123,6 +123,7 @@ class Monitoring:
                 "average_ms": sum(ordered) / count * 1000 if count else 0,
             }
         return output
+
     # 管理告警状态和持续时间
     def transition(self, name, condition, value, threshold, now):
         alert = self.alerts.setdefault(name, {"name": name, "state": "normal", "since": None})
@@ -162,6 +163,7 @@ class Monitoring:
             )
             if alert["state"] == "firing":
                 self.firings.labels(name).inc()
+
     # 比较指标与告警阈值
     def evaluate(self, snapshot, lag, dependencies, now=None):
         now = time.monotonic() if now is None else now

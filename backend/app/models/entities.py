@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.common.encryption import Encrypted
@@ -92,6 +92,7 @@ class KnowledgeBase(Base):
     name: Mapped[str] = mapped_column(Encrypted("knowledge_bases.name"))
     owner_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[float] = mapped_column(Float, default=time.time)
+    retrieval_revision: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
 
 
 class Grant(Base):

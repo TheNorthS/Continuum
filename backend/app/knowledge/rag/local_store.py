@@ -2,6 +2,7 @@ import math
 import threading
 from collections import Counter, defaultdict
 
+from app.common.errors import AppError
 from app.knowledge.rag.embedding import tokenize
 
 
@@ -33,7 +34,16 @@ class LocalStore:
         revision = self.repository.revision()
         with self._lock:
             if revision != self._revision:
-                chunks = self.repository.ready_chunks()
+                # Don't publish data loaded across a concurrent content/scope change
+                # under an earlier revision. Fail rather than cache a mismatched snapshot.
+                for _ in range(3):
+                    chunks = self.repository.ready_chunks()
+                    current = self.repository.revision()
+                    if current == revision:
+                        break
+                    revision = current
+                else:
+                    raise AppError("retrieval_changed", "资料正在更新，请稍后重试", 503)
                 frequencies = [Counter(tokenize(c["text"])) for c in chunks]
                 document_frequency = Counter(token for freq in frequencies for token in freq)
                 lengths = [sum(freq.values()) for freq in frequencies]
@@ -47,8 +57,6 @@ class LocalStore:
         dense, sparse = [], []
         for i, (chunk, freq) in enumerate(zip(chunks, frequencies, strict=True)):
             if len(chunk["embedding"]) != len(vector):
-                from app.common.errors import AppError
-
                 raise AppError("index_dimension", "索引维度已变更，请重建索引", 503)
             cosine = sum(a * b for a, b in zip(vector, chunk["embedding"], strict=True))
             score = 0

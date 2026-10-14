@@ -46,13 +46,13 @@ class Tracing:
 
             self.client = await asyncio.to_thread(
                 Langfuse,
-                public_key=self.settings.langfuse_public_key, # 公钥
-                secret_key=self.settings.langfuse_secret_key.get_secret_value(), # 私钥
-                base_url=self.settings.langfuse_base_url, # 远端地址
-                environment=self.settings.environment, # 开发 or 正式
-                timeout=5, # 超时时间
-                flush_at=32, # 批处理缓冲达到配置阈值时触发发送
-                flush_interval=5, # 周期性触发缓冲数据发送，通常以秒为单位
+                public_key=self.settings.langfuse_public_key,  # 公钥
+                secret_key=self.settings.langfuse_secret_key.get_secret_value(),  # 私钥
+                base_url=self.settings.langfuse_base_url,  # 远端地址
+                environment=self.settings.environment,  # 开发 or 正式
+                timeout=5,  # 超时时间
+                flush_at=32,  # 批处理缓冲达到配置阈值时触发发送
+                flush_interval=5,  # 周期性触发缓冲数据发送，通常以秒为单位
             )
 
     @asynccontextmanager
