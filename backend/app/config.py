@@ -51,6 +51,35 @@ class Settings(BaseSettings):
     attachment_max_chars: int = Field(default=24000, ge=1000, le=60000)
     attachment_max_images: int = Field(default=12, ge=1, le=20)
     request_timeout: float = Field(default=150, gt=0, le=160)
+    context_compaction_enabled: bool = True
+    context_window: int = Field(default=128000, ge=8192, le=2000000)
+    context_trigger_ratio: float = Field(default=0.80, ge=0.5, le=0.95)
+    context_target_ratio: float = Field(default=0.65, ge=0.2, le=0.85)
+    context_headroom: int = Field(default=2048, ge=512, le=100000)
+    context_keep_recent: int = Field(default=20000, ge=1000, le=200000)
+    context_summary_tokens: int = Field(default=4000, ge=500, le=12000)
+    context_max_attempts: int = Field(default=2, ge=1, le=3)
+    context_rebuild_interval: int = Field(default=8, ge=1, le=100)
+    context_token_meter: Literal["conservative", "huggingface", "provider"] = "conservative"
+    context_tokenizer_path: str = ""
+    context_count_url: str = ""
+    context_count_api_key: SecretStr = SecretStr("")
+    context_count_timeout: float = Field(default=10, gt=0, le=30)
+    context_model_windows: dict[str, int] = Field(default_factory=dict)
+    memory_enabled: bool = True
+    memory_worker_enabled: bool = True
+    memory_idle_seconds: int = Field(default=300, ge=10, le=86400)
+    memory_worker_interval: float = Field(default=10, ge=0.1, le=300)
+    memory_job_timeout: float = Field(default=120, ge=10, le=300)
+    memory_job_attempts: int = Field(default=3, ge=1, le=8)
+    memory_min_turns: int = Field(default=3, ge=1, le=100)
+    memory_max_records: int = Field(default=1000, ge=10, le=10000)
+    memory_token_budget: int = Field(default=6000, ge=256, le=24000)
+    memory_candidates: int = Field(default=32, ge=4, le=100)
+    memory_rerank_enabled: bool = True
+    memory_vector_enabled: bool = True
+    memory_episode_days: int = Field(default=90, ge=1, le=3650)
+    memory_mmr_eta: float = Field(default=0.75, ge=0.1, le=1)
     embedding_provider: Literal["hash", "huggingface", "api"] = "hash"
     embedding_model: str = "BAAI/bge-small-zh-v1.5"
     embedding_device: str = "cpu"
@@ -171,6 +200,36 @@ class Settings(BaseSettings):
         from urllib.parse import urlsplit
 
         from app.safety.policy import CATEGORIES
+
+        if self.context_target_ratio >= self.context_trigger_ratio:
+            raise ValueError("上下文压缩目标必须低于触发比例")
+        windows = [self.context_window, *self.context_model_windows.values()]
+        if any(
+            type(w) is not int
+            or w < 8192
+            or w > 2000000
+            or w - max(self.context_headroom, int(0.03 * w)) - self.context_summary_tokens <= 0
+            for w in windows
+        ):
+            raise ValueError("上下文窗口、输出预留与安全余量不兼容")
+        if self.context_token_meter == "huggingface" and not self.context_tokenizer_path:
+            raise ValueError("精确本地计数需要对应模型的 tokenizer 路径和聊天模板")
+        if self.context_token_meter == "provider":
+            endpoint = urlsplit(self.context_count_url)
+            if (
+                endpoint.scheme not in {"http", "https"}
+                or not endpoint.hostname
+                or endpoint.username
+                or endpoint.password
+                or endpoint.query
+                or endpoint.fragment
+            ):
+                raise ValueError("Token 计数接口地址无效")
+            if (
+                endpoint.hostname not in {"localhost", "127.0.0.1", "::1"}
+                and not self.context_count_api_key.get_secret_value()
+            ):
+                raise ValueError("远程 Token 计数接口需要独立凭据")
 
         if self.vision_model:
             endpoint = urlsplit(self.vision_base_url)

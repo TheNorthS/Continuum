@@ -1,0 +1,33 @@
+digraph G {
+
+  graph [rankdir=TB, bgcolor="white", pad=0.3, nodesep=0.38, ranksep=0.48, splines=polyline,
+         fontname="Microsoft YaHei", fontsize=22, fontcolor="#0F172A", labelloc=t];
+  node [shape=box, style="rounded,filled", fillcolor="#F8FAFC", color="#CBD5E1",
+        fontname="Microsoft YaHei", fontsize=13, fontcolor="#0F172A", margin="0.20,0.15", penwidth=1.3];
+  edge [color="#94A3B8", penwidth=1.35, arrowsize=0.7, fontname="Microsoft YaHei", fontsize=10, fontcolor="#475569"];
+
+  label="AHC · 长会话工作上下文压缩\n ";
+  raw [shape=cylinder, label="原始历史持续保留\n已提交消息 + 追加事件 + 原始证据资料", fillcolor="#F1F5F9", color="#64748B", width=7.5];
+  project [label="① 构造授权投影\n旧工具证据正文 → 引用 / 哈希 / 来源数量\n有效检查点 + 近期原文 + 当前资料 + 相关记忆", fillcolor="#EFF6FF", color="#60A5FA", width=7.5];
+  meter [label="② 计量即将发送的完整请求\nC 与触发值 T 比较；输出预留 O，安全余量 H\nT = min(αW, W − O − H)", fillcolor="#DBEAFE", color="#3B82F6", width=7.5];
+  raw -> project -> meter;
+  cut [label="③ 超阈值 / 手动触发\n选择最旧的连续安全前缀\n工具调用与结果平衡；保留最近回合\n固定原文 / 未闭合后缀不跨切点", width=4.1];
+  direct [label="无需摘要的路径\n未超触发阈值 → 使用当前投影\n只在需要时付出摘要模型调用成本", fillcolor="#ECFDF5", color="#34D399", width=3.9];
+  {rank=same; cut; direct;}
+  meter -> cut [label="需要压缩"]; meter -> direct [label="预算允许", color="#16A34A"];
+  summary [label="④ 结构化增量摘要\n旧摘要 + 新纳入的原始事件\n目标 / 状态 / 约束 / 完成 / 待办 / 决策 / 错误\n原始目标保留原文；字段引用真实事件 ID", fillcolor="#F5F3FF", color="#A78BFA", width=4.1];
+  protections [label="漂移与重试控制\n周期性从原始事件重建\n语义核验回读摘要引用的原文\n格式错误有界重试；不无限压缩", width=3.9];
+  {rank=same; summary; protections;}
+  cut -> summary; direct -> protections [style=invis];
+  summary -> protections [style=dashed, arrowhead=none, constraint=false];
+  validate [label="⑤ 验证候选投影\nSchema / 证据 / 任务一致性 / 安全\n输入必须变短；自动压缩需达到目标\n目标 = min(βW, 0.85T)", fillcolor="#EFF6FF", color="#60A5FA", width=4.1];
+  reject [label="失败保持原历史 / 原稳定投影\n无安全切点、无收益或校验失败不提交\n先移除低优先级记忆；仍超硬预算则报错\n已确认窗口溢出最多恢复重试一次", fillcolor="#FFF7ED", color="#FDBA74", width=3.9];
+  {rank=same; validate; reject;}
+  summary -> validate; validate -> reject [label="失败", color="#D97706", constraint=false];
+  protections -> reject [style=invis];
+  commit [label="⑥ CAS 事务提交检查点\n会话 revision + 租约 + 来源哈希 / 授权再次核验\n检查点与活动指针原子更新 → 重新组装 → 发送模型请求", fillcolor="#DCFCE7", color="#22C55E", width=7.5];
+  validate -> commit [label="通过", color="#16A34A"];
+  reject -> commit [style=invis];
+  note [label="默认 α=0.80、β=0.65；W 按实际模型配置\n保守计量不是精确 Token 数；可配置匹配 tokenizer 或供应商计数适配器\n压缩改变模型可见投影，不删除历史，也不自动生成长期记忆", fillcolor="#F1F5F9", width=8.5];
+  commit -> note [style=dashed, arrowhead=none];
+}

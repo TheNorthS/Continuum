@@ -46,6 +46,8 @@ def worker_chats(services, baseline):
             services.settings, services.llm, knowledge, services.web, services.tracing, services.moderation
         )
         chats[variant] = ChatService(services.settings, services.repository, flow, services.moderation)
+        chats[variant].context = services.context
+        chats[variant].attachments = services.attachments
     return chats
 
 

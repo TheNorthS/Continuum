@@ -95,7 +95,7 @@ export function AnswerCard({ message }: { message: Message }) {
       <div className="message-label">
         {assistant ? (
           <>
-            <span className="mini-logo">E</span> RAG-E <span className="subtle">知识助手</span>
+            <span className="mini-logo">C</span> 知恒 · Continuum <span className="subtle">智能助手</span>
           </>
         ) : (
           '你'
@@ -112,6 +112,13 @@ export function AnswerCard({ message }: { message: Message }) {
           未使用知识库 · {message.details.attachments?.length ? '依据所选附件作答' : '普通对话，未检索资料'}
         </div>
       )}
+      {assistant &&
+      (message.details?.context?.checkpoint_id || message.details?.context?.memory_ids?.length) ? (
+        <div className="answer-scope">
+          {message.details.context.checkpoint_id ? '已使用历史压缩摘要 · ' : ''}参考个人记忆{' '}
+          {message.details.context.memory_ids?.length || 0} 条
+        </div>
+      ) : null}
       {!!message.details?.attachments?.length && (
         <div className="attachment-chips">
           {message.details.attachments.map((a) => (

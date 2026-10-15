@@ -79,6 +79,26 @@
     "web_search_max_concurrency": 4,
     "web_search_content_max_chars": 5000,
     "web_search_failure_mode": "error",
-    "tavily_search_depth": "basic"
+    "tavily_search_depth": "basic",
+    "context_compaction_enabled": true,
+    "context_headroom": 2048,
+    "context_keep_recent": 20000,
+    "context_max_attempts": 2,
+    "context_model_windows": {},
+    "context_rebuild_interval": 8,
+    "context_summary_tokens": 4000,
+    "context_target_ratio": 0.65,
+    "context_token_meter": "conservative",
+    "context_trigger_ratio": 0.8,
+    "context_window": 128000,
+    "memory_candidates": 32,
+    "memory_enabled": true,
+    "memory_episode_days": 90,
+    "memory_max_records": 1000,
+    "memory_min_turns": 3,
+    "memory_mmr_eta": 0.75,
+    "memory_rerank_enabled": true,
+    "memory_token_budget": 6000,
+    "memory_vector_enabled": true
   }
 }

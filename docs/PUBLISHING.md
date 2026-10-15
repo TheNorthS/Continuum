@@ -1,6 +1,6 @@
 # GitHub 发布说明
 
-仓库根目录应为 **RAG-E**，不要把包含其他实验和 `.env` 的父目录作为仓库。README 面向首次访问者；`docs/` 适合一起发布，详细指南与图表使用仓库相对链接。
+发布名称为 **知恒 · Continuum**，GitHub 仓库名建议使用 `Continuum`。仓库根目录应为包含 `backend/`、`frontend/` 和本项目 README 的独立项目目录；现有本地文件夹名可继续使用，无需移动文件。不要把包含其他实验和 `.env` 的父目录作为仓库。README 面向首次访问者；`docs/` 适合一起发布，详细指南与图表使用仓库相对链接。
 
 ## 文件边界
 
@@ -42,14 +42,14 @@ git init -b main
 git add .
 git diff --cached --stat
 python scripts/check_publication.py
-git commit -m "Initial public release of RAG-E"
+git commit -m "Initial public release of Continuum"
 git remote add origin https://github.com/<owner>/<repository>.git
 git push -u origin main
 ```
 
 将占位地址替换为实际仓库。已有仓库使用现有分支和 remote，不重复初始化或覆盖历史。提交前人工检查 `git diff --cached`；共享评测图表和汇总即可，不需要上传整个 `test-results/`。
 
-CI 不因普通 push 自动执行。工作流文件进入默认分支后，可在 **Actions → RAG-E CI → Run workflow** 手动运行；PR 创建、重新打开或更新提交时仍自动检查，包括向已有 PR 的分支推送新提交。
+CI 不因普通 push 自动执行。工作流文件进入默认分支后，可在 **Actions → Continuum CI → Run workflow** 手动运行；PR 创建、重新打开或更新提交时仍自动检查，包括向已有 PR 的分支推送新提交。
 
 ## 后续维护
 

@@ -4,6 +4,8 @@ from typing import TypedDict  # 声明图状态字段；运行时状态仍是普
 from langgraph.graph import END, START, StateGraph  # 图的终点、起点和状态图构建器。
 
 from app.common.context import knowledge_scope  # 请求级知识库范围，避免并发请求互相影响。
+from app.memory.context import ACTIVE_CONTEXT
+from app.memory.retrieval import render as render_memory
 
 
 class RAGState(TypedDict, total=False):  # total=False：节点可只返回自己更新的字段。
@@ -119,6 +121,22 @@ class Orchestrator:
     async def retrieve(self, state):
         # 复制附件列表，避免追加知识库结果时修改原 attachment_sources。
         sources = list(state.get("attachment_sources", []))
+        # 记忆来源先经权限过滤与 Token 预算选择，保留独立标识，不能伪装为知识库文档。
+        memory_context = ACTIVE_CONTEXT.get()
+        if memory_context:
+            sources += [
+                {
+                    "id": "memory-" + m["id"],
+                    "text": render_memory(m),
+                    "score": m.get("score", 1.0),
+                    "metadata": {
+                        "memory_id": m["id"],
+                        "title": "个人记忆：" + m["payload"]["subject"],
+                        "category": "memory",
+                    },
+                }
+                for m in memory_context["memories"]
+            ]
         # 关闭知识库时完全跳过此调用，因此不会为问题生成检索向量。
         if state.get("use_knowledge", True):
             # KnowledgeService 完成授权范围内的检索与精排，返回 Top-K 片段。

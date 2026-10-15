@@ -1,1 +1,1 @@
-"""RAG-E regression and security tests."""
+"""Continuum regression and security tests."""

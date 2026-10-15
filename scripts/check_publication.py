@@ -34,8 +34,8 @@ def git_files(root):
         check=False,
     )
     if found.returncode == 0 and Path(found.stdout.strip()).resolve() != root:
-        raise ValueError("Run from an independent RAG-E repository, not a parent repository")
-    with tempfile.TemporaryDirectory(prefix="rag-e-publication-") as temporary:
+        raise ValueError("Run from an independent Continuum repository, not a parent repository")
+    with tempfile.TemporaryDirectory(prefix="continuum-publication-") as temporary:
         command = ["git", "-c", "core.quotepath=false", "-c", f"core.excludesFile={os.devnull}"]
         if found.returncode:
             command += ["--git-dir", str(Path(temporary) / "repo.git"), "--work-tree", str(root)]

@@ -1,7 +1,7 @@
 import time
 import uuid
 
-from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from app.common.encryption import Encrypted
@@ -45,6 +45,9 @@ class Conversation(Base):
     use_knowledge: Mapped[bool] = mapped_column(Boolean, default=True, server_default="1")
     # 持久保存附件 ID 和顺序，文件正文仍仅存于个人空间。
     attachment_ids: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+    context_revision: Mapped[int] = mapped_column(BigInteger, default=0, server_default="0")
+    context_pins: Mapped[list] = mapped_column(JSON, default=list, server_default="[]")
+    active_checkpoint_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
 
 
 class Attachment(Base):
@@ -165,3 +168,113 @@ class AuditEvent(Base):
     details: Mapped[dict] = mapped_column(JSON)
     previous: Mapped[str] = mapped_column(String(64))
     signature: Mapped[str] = mapped_column(String(64))
+
+
+class MemoryState(Base):
+    __tablename__ = "memory_states"
+    id: Mapped[str] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    auto_extract: Mapped[bool] = mapped_column(Boolean, default=True)
+    version: Mapped[int] = mapped_column(BigInteger, default=0)
+    forget_before: Mapped[float] = mapped_column(Float, default=0)
+
+
+class MemoryEvent(Base):
+    __tablename__ = "memory_events"
+    __table_args__ = (UniqueConstraint("conversation_id", "sequence", name="uq_memory_event_sequence"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    conversation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    message_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sequence: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(32))
+    role: Mapped[str] = mapped_column(String(16))
+    tool_call_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    content: Mapped[dict] = mapped_column(Encrypted("memory_events.content"))
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)
+
+
+class MemoryArtifact(Base):
+    __tablename__ = "memory_artifacts"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    digest: Mapped[str] = mapped_column(String(64))
+    payload: Mapped[dict] = mapped_column(Encrypted("memory_artifacts.payload"))
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)
+
+
+class CompactionCheckpoint(Base):
+    __tablename__ = "compaction_checkpoints"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    scope_key: Mapped[str] = mapped_column(String(64))
+    start_seq: Mapped[int] = mapped_column(Integer)
+    end_seq: Mapped[int] = mapped_column(Integer)
+    base_revision: Mapped[int] = mapped_column(BigInteger)
+    source_event_ids: Mapped[list] = mapped_column(JSON)
+    source_digest: Mapped[str] = mapped_column(String(64))
+    parent_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    summary: Mapped[dict] = mapped_column(Encrypted("compaction_checkpoints.summary"))
+    tokens_before: Mapped[int] = mapped_column(Integer)
+    tokens_after: Mapped[int] = mapped_column(Integer)
+    model: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)
+
+
+class MemoryRecord(Base):
+    __tablename__ = "memory_records"
+    __table_args__ = (UniqueConstraint("owner_id", "canonical_key", "version", name="uq_memory_version"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    base_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    canonical_key: Mapped[str] = mapped_column(String(64), index=True)
+    category: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    payload: Mapped[dict] = mapped_column(Encrypted("memory_records.payload"))
+    evidence_ids: Mapped[list] = mapped_column(JSON)
+    embedding: Mapped[list | None] = mapped_column(Encrypted("memory_records.embedding"), nullable=True)
+    embedding_signature: Mapped[str] = mapped_column(String(64), default="")
+    utility: Mapped[float] = mapped_column(Float)
+    confidence: Mapped[float] = mapped_column(Float)
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)
+    updated_at: Mapped[float] = mapped_column(Float, default=time.time)
+    last_used_at: Mapped[float | None] = mapped_column(Float, nullable=True)
+    expires_at: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class MemoryJob(Base):
+    __tablename__ = "memory_jobs"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    revision: Mapped[int] = mapped_column(BigInteger)
+    memory_version: Mapped[int] = mapped_column(BigInteger)
+    status: Mapped[str] = mapped_column(String(16), index=True)
+    stage: Mapped[str] = mapped_column(String(16), default="extract")
+    run_after: Mapped[float] = mapped_column(Float)
+    lease_token: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    lease_until: Mapped[float] = mapped_column(Float, default=0)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    error: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)
+
+
+class MemoryCandidate(Base):
+    __tablename__ = "memory_candidates"
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    job_id: Mapped[str] = mapped_column(ForeignKey("memory_jobs.id", ondelete="CASCADE"), index=True)
+    status: Mapped[str] = mapped_column(String(16))
+    payload: Mapped[dict] = mapped_column(Encrypted("memory_candidates.payload"))
+    created_at: Mapped[float] = mapped_column(Float, default=time.time)

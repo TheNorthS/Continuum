@@ -1,4 +1,6 @@
-# 文档导航
+# 知恒 · Continuum 文档导航
+
+知识与记忆双驱动的长程多模态智能体平台。
 
 [返回项目首页](../README.md)
 
@@ -10,6 +12,7 @@
 | [真实模型接入](QUICKSTART.md) | 配置 LLM、Embedding、Milvus 和文档导入 |
 | [知识库范围](KNOWLEDGE_SCOPE.md) | 单 / 多库问答、会话范围与授权 |
 | [多模态与个人空间](ATTACHMENTS.md) | 聊天附件、关闭知识库、图片理解、文件管理和迁移 |
+| [长上下文与个人记忆](MEMORY.md) | 自动/手动压缩、原文固定、检查点恢复、记忆提炼与纠错 |
 | [模型精排](RERANK.md) | 在线 API、本地 CrossEncoder、候选与异常策略 |
 | [联网检索](WEB_SEARCH.md) | Tavily / Exa 单路或双路并行、配置、来源与故障处理 |
 

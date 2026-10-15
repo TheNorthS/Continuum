@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException
 
 from app.api.middleware import OperationalMiddleware
 from app.api.security_middleware import SecurityMiddleware
-from app.api.v1 import attachments, auth, chat, graph, health, knowledge, observability, security
+from app.api.v1 import attachments, auth, chat, graph, health, knowledge, memory, observability, security
 from app.common.errors import AppError
 from app.common.redaction import RedactionFilter
 from app.config import Settings
@@ -39,7 +39,11 @@ def create_app(settings: Settings | None = None):
                 handler.removeFilter(redactor)
 
     app = FastAPI(
-        title="RAG-E API",
+        title="知恒 · Continuum API",
+        description=(
+            "知识与记忆双驱动的长程多模态智能体平台\n\n"
+            "Knowledge- and Memory-Driven Platform for Long-Horizon Multimodal Agents"
+        ),
         version="1.0.0",
         lifespan=lifespan,
         docs_url=None if settings.environment == "production" else "/docs",
@@ -82,6 +86,7 @@ def create_app(settings: Settings | None = None):
 
     for router in (
         attachments.router,
+        memory.router,
         auth.router,
         chat.router,
         knowledge.router,

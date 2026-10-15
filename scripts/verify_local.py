@@ -83,7 +83,7 @@ def main():
     with httpx.Client(base_url=args.frontend) as frontend:
         response = frontend.get("/")
         response.raise_for_status()
-        assert "RAG-E" in response.text
+        assert "知恒 · Continuum" in response.text
         assert frontend.get("/api/v1/health/live").status_code == 200
         report["frontend_http_and_proxy"] = "ok"
     target = ROOT / "test-results" / Path(args.report).name

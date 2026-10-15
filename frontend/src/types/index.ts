@@ -23,6 +23,7 @@ export interface Source {
   score: number;
   rerank_score?: number;
   metadata: {
+    memory_id?: string;
     attachment_id?: string;
     title?: string;
     filename?: string;
@@ -43,6 +44,13 @@ export interface Step {
   generations: number;
 }
 export interface Answer {
+  context?: {
+    memory_ids?: string[];
+    checkpoint_id?: string | null;
+    compactions?: number;
+    input_units?: number;
+    meter?: string;
+  };
   knowledge_scope?: {
     base_ids: string[] | null;
     base_names: string[];

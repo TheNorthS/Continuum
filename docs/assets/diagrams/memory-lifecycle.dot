@@ -1,0 +1,29 @@
+digraph G {
+
+  graph [rankdir=TB, bgcolor="white", pad=0.3, nodesep=0.38, ranksep=0.48, splines=polyline,
+         fontname="Microsoft YaHei", fontsize=22, fontcolor="#0F172A", labelloc=t];
+  node [shape=box, style="rounded,filled", fillcolor="#F8FAFC", color="#CBD5E1",
+        fontname="Microsoft YaHei", fontsize=13, fontcolor="#0F172A", margin="0.20,0.15", penwidth=1.3];
+  edge [color="#94A3B8", penwidth=1.35, arrowsize=0.7, fontname="Microsoft YaHei", fontsize=10, fontcolor="#475569"];
+
+  label="EMC · 个人记忆提炼、检索与生命周期\n ";
+  input [label="来源：当前用户的原始会话事件\n自动提炼只采信用户明确陈述；不将助手推测或检索文档指令升级为事实", fillcolor="#DBEAFE", color="#3B82F6", width=9];
+  queue [label="后台持久任务\n达到最少回合数 + 空闲窗口 / 用户主动触发\n数据库租约 · fencing token · 幂等键 · 有界重试", fillcolor="#EFF6FF", color="#60A5FA", width=9];
+  input -> queue;
+  extract [label="Phase 1 · 候选提取\n原始事件 ID + 逐字引用 + 类型 / 敏感过滤 / 证据核验 / 语义校验\n效用低则丢弃或只保留短期经验", fillcolor="#F5F3FF", color="#A78BFA", width=9];
+  consolidate [label="Phase 2 · 整合\n稳定键 + Exact / BM25 / Vector 邻居 → 关系判定 → 用户事务锁下复核与提交\n候选与阶段持久化，可恢复执行", fillcolor="#F5F3FF", color="#A78BFA", width=9];
+  queue -> extract; extract -> consolidate [label="通过验证"];
+  active [label="Active · 有效记忆\n独立事实保存；重复合并证据\n时间 / 范围 / 证据 / 版本随记录保留", fillcolor="#DCFCE7", color="#22C55E", width=4.25];
+  disputed [label="Disputed · 待确认冲突\n同一事实存在不确定增补或互斥值\n暂停注入，不按最新时间自动覆盖", fillcolor="#FFF7ED", color="#FDBA74", width=4.25];
+  {rank=same; active; disputed;}
+  consolidate -> active [label="独立 / 重复", color="#16A34A"];
+  consolidate -> disputed [label="冲突 / 不确定增补", color="#D97706"];
+  manual [label="用户控制\n明确记住 / 更正 → 新有效版本\n旧版本 Superseded；遗忘 → 清内容和向量\n过期或来源失效 → 不参与召回", fillcolor="#F1F5F9", color="#94A3B8", width=4.25];
+  retrieve [label="每轮按需检索\n先过滤本人 / 库范围 / 状态 / 有效期 / 证据\nExact + BM25 + Vector → RRF → 可选精排\n综合评分 → MMR 去重 → Token 预算选择", fillcolor="#ECFDF5", color="#34D399", width=4.25];
+  {rank=same; retrieve; manual;}
+  active -> retrieve; disputed -> manual [label="等待明确更正"];
+  manual -> active [style=dashed, constraint=false, label="新版本"];
+  inject [label="低信任背景注入 + 来源引用\n不提升为 system 指令；模型调用与最终提交前再次复核\nSQL 是权威存储，Markdown 导出为只读投影；团队共享不在当前范围", fillcolor="#EFF6FF", color="#60A5FA", width=9];
+  retrieve -> inject;
+  manual -> inject [style=dashed, arrowhead=none, label="删除 / 更正影响后续使用"];
+}

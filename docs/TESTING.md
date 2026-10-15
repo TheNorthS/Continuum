@@ -10,6 +10,8 @@
 
 ## 事实依据反馈修正
 
+长上下文及个人记忆专项：`tests/test_memory_context.py` 验证事件/工具配对、引用裁剪、摘要来源、检查点恢复与 CAS、自动触发与溢出恢复、记忆版本/冲突/遗忘、知识库范围、后台租约和加密迁移。`memory.test.tsx` 覆盖记忆管理、证据、更正、遗忘、固定原文和手动压缩。模拟协议通过不代表真实模型事实保持率提升，实际多轮质量对照见[记忆验收说明](MEMORY.md)。
+
 在 `backend` 运行 `uv run --inexact pytest -q tests/test_grounding_feedback.py tests/test_workflow.py tests/test_moderation.py`。覆盖 Grounding JSON 协议、失败原因传入下一轮、同一资料下修正后重新评分、次数上限、切换资料 / 新一轮清空反馈，以及反馈审查、API / SSE / 历史和正文追踪隔离。
 
 这些是模拟模型响应的工程回归，不证明真实模型的幻觉率下降。真实质量对照需使用新评测 run，保留历史成绩。
@@ -82,7 +84,7 @@ uv run --inexact --extra dev --extra milvus pytest -q
 真实 Milvus 可在独立测试环境运行：
 
 ```powershell
-# RAG-E 根目录
+# 项目根目录
 docker compose -p rag-e-validation -f docker-compose.yml -f docker-compose.test.yml --profile milvus up -d --wait etcd minio milvus
 cd backend
 $env:RAGE_TEST_MILVUS_URI='http://127.0.0.1:19539'
@@ -102,5 +104,5 @@ uv run --inexact --extra dev --extra milvus pytest -q -m external
 
 ## 外部集成
 
-CI 验证依赖锁、格式、测试、前端构建和两个容器镜像构建；后端作业提供临时 PostgreSQL 16，图谱集成作业提供 Neo4j/Redis。触发器为 `workflow_dispatch` 与 `pull_request`：普通 push 不单独运行；创建、重新打开或更新 PR 提交时自动运行。工作流进入默认分支后，可从 **Actions → RAG-E CI → Run workflow** 手动运行。
+CI 验证依赖锁、格式、测试、前端构建和两个容器镜像构建；后端作业提供临时 PostgreSQL 16，图谱集成作业提供 Neo4j/Redis。触发器为 `workflow_dispatch` 与 `pull_request`：普通 push 不单独运行；创建、重新打开或更新 PR 提交时自动运行。工作流进入默认分支后，可从 **Actions → Continuum CI → Run workflow** 手动运行。
 Docker/Kubernetes/真实模型的实际运行结果应与单元测试结果区分记录，不能用模拟测试替代外部服务验收。

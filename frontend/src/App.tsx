@@ -4,6 +4,7 @@ import { Login } from './pages/Login';
 import { Chat } from './pages/Chat';
 import { Knowledge } from './pages/Knowledge';
 import { Space } from './pages/Space';
+import { Memory } from './pages/Memory';
 import { System } from './pages/System';
 import { KnowledgeGraph } from './pages/KnowledgeGraph';
 import { Observability } from './pages/Observability';
@@ -132,10 +133,10 @@ export default function App() {
     <div className="app-shell">
       {menu && <button aria-label="关闭侧栏" className="sidebar-overlay" onClick={() => setMenu(false)} />}
       <aside className={`sidebar ${menu ? 'open' : ''}`}>
-        <div className="brand">
+        <div className="brand" aria-label="知恒 · Continuum">
           <Layers3 size={27} />
-          <strong>RAG-E</strong>
-          <span>WORKSPACE</span>
+          <strong>知恒</strong>
+          <span>CONTINUUM</span>
         </div>
         <button disabled={busy} className="new-chat" onClick={() => select('')}>
           <Plus size={18} />
@@ -146,6 +147,7 @@ export default function App() {
             { id: 'chat', label: '知识问答', icon: MessageSquare },
             { id: 'knowledge', label: '知识库', icon: BookOpen },
             { id: 'space', label: '空间管理', icon: Layers3 },
+            { id: 'memory', label: '记忆管理', icon: Layers3 },
             { id: 'system', label: '系统概览', icon: Activity },
             { id: 'graph', label: '知识图谱', icon: Layers3 },
             ...(can('monitor.read') ? [{ id: 'observability', label: '监控与追踪', icon: Activity }] : []),
@@ -222,6 +224,7 @@ export default function App() {
                   chat: '知识问答',
                   knowledge: '知识库',
                   space: '空间管理',
+                  memory: '记忆管理',
                   system: '系统概览',
                   graph: '知识图谱',
                   observability: '监控与追踪',
@@ -255,6 +258,8 @@ export default function App() {
           />
         ) : page === 'space' ? (
           <Space />
+        ) : page === 'memory' ? (
+          <Memory />
         ) : page === 'security' ? (
           <SecurityAdmin />
         ) : page === 'account' ? (

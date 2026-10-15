@@ -2,6 +2,7 @@ import asyncio  # 提供线程卸载、整轮超时和取消时的释放保护�
 
 from app.common.context import knowledge_scope  # 当前异步请求使用的知识库范围。
 from app.common.errors import AppError  # 带业务错误码、公开提示和 HTTP 状态的异常。
+from app.memory.context import ACTIVE_CONTEXT
 from app.services.moderation_service import ModerationBlocked  # 内容被拦截时使用的专门异常。
 
 
@@ -27,6 +28,8 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
         token = await asyncio.to_thread(self.repository.claim, conversation_id, user_id)
         # 记录 ContextVar 的恢复令牌；设置范围之前出错时仍能安全进入 finally。
         scope_token = None
+        context_token = None
+        context_state = None
         try:
             # 持有租约时核验并保存知识库范围；变更范围会刷新历史上下文起点。
             scope = await asyncio.to_thread(
@@ -39,12 +42,6 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
             attachment_ids = selection["attachment_ids"]
             # 附件变化也会重置上下文起点，必须在读取历史之前使用最新边界。
             scope["scope_start_id"] = selection["scope_start_id"]
-            # 读取会话历史；已删除附件或撤权资料对应的内容由 Repository 隐藏。
-            history = await asyncio.to_thread(self.repository.history, conversation_id, user_id)
-            # 只让范围切换之后的消息进入模型，旧消息仍可在聊天界面展示。
-            history = [m for m in history if m["id"] > scope["scope_start_id"]]
-            # 最多带最近 10 条消息，每条正文最多 3000 字符；不把历史 details 整包传入模型。
-            context = [{"role": m["role"], "content": m["content"][:3000]} for m in history[-10:]]
             # 设置请求局部范围：空元组表示关闭知识库，具体元组限定库，None 表示兼容的未固定范围。
             scope_token = knowledge_scope.set(
                 ()
@@ -68,6 +65,10 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
                             }
                         )
                     await self.moderation.guard(question, "input")  # 高风险问题在路由和检索前被拦截。
+                    # 以可恢复事件和检查点构造历史，不再固定丢弃第 11 条之前的消息。
+                    context_state = await self.context.open(user_id, conversation_id, token, question)
+                    context_token = ACTIVE_CONTEXT.set(context_state)
+                    context = self.context.history(context_state)
                     if context:
                         # 加上角色标签，便于审查器判断跨消息、分步提出的风险意图。
                         conversation = "\n".join(
@@ -75,7 +76,11 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
                             for m in context
                         )
                         # 审查实际要使用的历史与当前问题组合，避免只逐条看时遗漏上下文风险。
-                        await self.moderation.guard(conversation + "\n当前问题：" + question, "input")
+                        # 按重叠窗口检查组合上下文，保留角色和当前问题，避免逐条审查遗漏跨消息意图。
+                        review = conversation + "\n当前问题：" + question
+                        width = self.settings.moderation_max_chars
+                        for start in range(0, len(review), width - 1000):
+                            await self.moderation.guard(review[start : start + width], "input")
                     # 前者是给模型的证据，后者是不含二进制 payload 的附件摘要。
                     attachment_sources, selected_attachments = [], []
                     if attachment_ids:
@@ -139,11 +144,14 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
                 raise AppError("generation_timeout", "本次问答超时，请稍后重试", 504) from exc
             # 在最终结果中说明实际使用的知识库范围和开关状态。
             result["knowledge_scope"] = scope
+            result["context"] = self.context.report(context_state)
             # 提交前再次核验租约、来源权限和附件存在性，通过后原子写入用户与助手两条消息。
             await asyncio.to_thread(self.repository.finish, conversation_id, token, question, result)
             # 返回包含会话 ID 的结果，SSE 层收到后才能发送 result 事件。
             return {**result, "conversation_id": conversation_id}
         finally:
+            if context_token is not None:
+                ACTIVE_CONTEXT.reset(context_token)
             # 无论成功、拦截、异常还是取消，都恢复调用前的请求范围。
             if scope_token is not None:
                 knowledge_scope.reset(scope_token)

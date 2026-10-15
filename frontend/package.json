@@ -1,5 +1,6 @@
 {
-  "name": "rag-e-frontend",
+  "name": "continuum-frontend",
+  "description": "Knowledge- and Memory-Driven Platform for Long-Horizon Multimodal Agents",
   "version": "1.0.0",
   "private": true,
   "type": "module",

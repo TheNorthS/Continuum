@@ -22,7 +22,7 @@ started = time.monotonic()
 received = 0
 next_progress = 16 * 1024 * 1024
 request = urllib.request.Request(
-    url, headers={"Accept": "application/octet-stream", "User-Agent": "RAG-E-build"}
+    url, headers={"Accept": "application/octet-stream", "User-Agent": "Continuum-build"}
 )
 with (
     urllib.request.urlopen(request, timeout=120) as response,

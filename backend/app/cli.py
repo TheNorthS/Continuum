@@ -12,6 +12,10 @@ from app.infrastructure.container import Container
 
 async def execute(args):
     settings = Settings()
+    if args.command == "memory-worker":
+        settings.memory_worker_enabled = (
+            False  # Dedicated worker owns its loop; do not also spawn an embedded one.
+        )
     if args.command == "keys-init":
         cipher = Cipher(settings.encryption_key_file, create=True)
         print(json.dumps({"key_file": str(cipher.path), "active_key": cipher.active}))
@@ -20,7 +24,14 @@ async def execute(args):
     try:
         await services.start()
         if args.command == "init":
-            print("RAG-E 数据库及管理员已就绪（已有管理员密码不会被覆盖）。")
+            print("知恒 · Continuum 数据库及管理员已就绪（已有管理员密码不会被覆盖）。")
+        elif args.command == "memory-worker":
+            if args.once:
+                print(json.dumps({"processed": await services.memory.run_once()}))
+            else:
+                while True:
+                    await services.memory.run_once()
+                    await asyncio.sleep(settings.memory_worker_interval)
         elif args.command == "ingest":
             directory = Path(args.directory).resolve()
             files = sorted(
@@ -177,10 +188,12 @@ async def execute(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="RAG-E 运维与数据导入工具")
+    parser = argparse.ArgumentParser(description="知恒 · Continuum 运维与数据导入工具")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("init")
     sub.add_parser("verify")
+    worker = sub.add_parser("memory-worker")
+    worker.add_argument("--once", action="store_true")
     sub.add_parser("keys-init")
     sub.add_parser("keys-status")
     sub.add_parser("audit-verify")

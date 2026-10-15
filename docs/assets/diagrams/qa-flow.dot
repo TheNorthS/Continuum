@@ -1,43 +1,32 @@
-digraph QuestionAnswering {
-  graph [rankdir=TB, bgcolor="white", pad=0.35, nodesep=0.48, ranksep=0.47,
-         splines=polyline, fontname="Microsoft YaHei", fontsize=22,
-         labelloc=t, label="选定知识库的问答流程\n "];
+digraph G {
+
+  graph [rankdir=TB, bgcolor="white", pad=0.3, nodesep=0.38, ranksep=0.48, splines=polyline,
+         fontname="Microsoft YaHei", fontsize=22, fontcolor="#0F172A", labelloc=t];
   node [shape=box, style="rounded,filled", fillcolor="#F8FAFC", color="#CBD5E1",
-        fontname="Microsoft YaHei", fontsize=14, fontcolor="#0F172A", margin="0.20,0.14", penwidth=1.3];
-  edge [color="#94A3B8", penwidth=1.4, arrowsize=0.75, fontname="Microsoft YaHei", fontsize=11, fontcolor="#475569"];
+        fontname="Microsoft YaHei", fontsize=13, fontcolor="#0F172A", margin="0.20,0.15", penwidth=1.3];
+  edge [color="#94A3B8", penwidth=1.35, arrowsize=0.7, fontname="Microsoft YaHei", fontsize=10, fontcolor="#475569"];
 
-  request [label="用户问题 + 所选知识库", fillcolor="#DBEAFE", color="#3B82F6", width=4.8, group=main];
-  preflight [label="① 准入与上下文准备\n认证 / 资源授权 / 会话租约\n问题及历史内容审查 → 追问上下文化", width=4.8, group=main];
-  retrieve [label="② 范围内检索\nBM25 + 向量 + 可选图谱 → RRF\n可选精排 → Top-K → 权限复核",
-            fillcolor="#EFF6FF", color="#60A5FA", width=4.8, group=main];
-  evidence [label="③ 来源筛选\n安全过滤 + 相关性判断\n资料可用且允许继续生成？", shape=diamond,
-            fillcolor="#F0FDF4", color="#4ADE80", fontsize=13, group=main];
-  generate [label="④ 生成与输出审查\n仅基于当前资料，围绕原始问题作答\n生成计数累加，随后审核候选答案",
-            fillcolor="#F5F3FF", color="#A78BFA", width=4.8, group=main];
-  grade [label="⑤ 回答质量检查\n先检查事实依据\n通过后检查是否解决原问题", shape=diamond,
-         fillcolor="#F0FDF4", color="#4ADE80", fontsize=13, group=main];
-  finish [label="⑥ 最终检查与提交\n复核答案 / 引用安全及资源归属\n保存本轮会话，返回答案与引用",
-          fillcolor="#DCFCE7", color="#22C55E", width=4.8, group=main];
-
-  rewrite [label="检索纠正\n生成次数已用尽 → 返回资料不足\n否则仍可改写 → 改写查询，回到②\n无改写额度 → 返回资料不足",
-           fillcolor="#FFF7ED", color="#FB923C", width=4.5, group=correction];
-  retry [label="回答纠正\n缺少依据 → 用当前资料重新生成，回到④\n有依据但未解决问题 → 改写查询，回到②\n相应重试预算耗尽 → 返回资料不足",
-         fillcolor="#FFF7ED", color="#FB923C", width=4.5, group=correction];
-  failure [label="异常终止（独立于质量重试）\n安全拦截 / 审查故障 / 依赖错误 / 超时\n返回拦截或错误，不保存本轮消息",
-           fillcolor="#FFF1F2", color="#FB7185", width=5.0, group=correction];
-
-  request -> preflight [weight=30];
-  preflight -> retrieve [weight=30];
-  retrieve -> evidence [weight=30];
-  evidence -> generate [label="是", color="#22C55E", weight=30];
-  generate -> grade [weight=30];
-  grade -> finish [label="两项均通过", color="#22C55E", weight=30];
-  evidence -> rewrite [label="否", color="#F59E0B", constraint=false];
-  grade -> retry [label="未通过", color="#F59E0B", constraint=false];
-  rewrite -> retry [style=invis, weight=10];
-  retry -> failure [style=invis, weight=10];
-
-  {rank=same; evidence; rewrite;}
-  {rank=same; grade; retry;}
-  {rank=same; finish; failure;}
+  label="一轮问答 · 范围、证据与上下文共同约束\n ";
+  input [label="用户问题 + 会话中保存的知识库 / 附件选择", fillcolor="#DBEAFE", color="#3B82F6", width=7.5];
+  prepare [label="① 准入与上下文准备\n身份与归属 / 会话租约 / 问题审查\n恢复事件与检查点 + 检索有效个人记忆 + 历史审查", width=7.5];
+  input -> prepare;
+  rag [label="②A 资料问答\n所选知识库（可关闭）+ 所选附件\n附件含图 → 独立视觉识别\n合并相关记忆 → 来源审查 / 相关性", fillcolor="#ECFDF5", color="#34D399", width=4.0];
+  general [label="②B 普通对话\n知识库关闭且未选附件，不做资料 Grounding\n主 LLM + 有效历史 / 个人记忆\n输出审查后到⑤，不检索知识库或网络", fillcolor="#F5F3FF", color="#A78BFA", width=4.0];
+  {rank=same; rag; general;}
+  prepare -> rag [label="知识库或附件"]; prepare -> general [label="无资料范围"];
+  generate [label="③ 基于证据生成\n原始问题 + 当前来源 + 历史 / 记忆\n失败重试携带上一版答案及 Grounding 原因", fillcolor="#EFF6FF", color="#60A5FA", width=4.0];
+  budget [label="每次主 LLM 调用前\n计量完整请求 → 按需压缩旧历史\n安全切点 / 检查点提交 / 重新组装\n仍超预算 → 明确错误", fillcolor="#FFF7ED", color="#FDBA74", width=4.0];
+  {rank=same; generate; budget;}
+  rag -> generate [label="有相关来源"]; general -> budget [style=dashed, arrowhead=none, label="同样计量"];
+  generate -> budget [style=dashed, arrowhead=none, constraint=false];
+  judge [label="④ 资料答案质量检查\n候选安全 → Grounding → 回答有效性\n修正版也必须重新检查", fillcolor="#ECFDF5", color="#34D399", width=4.0];
+  retry [label="有界纠正\n缺少依据 → 携带反馈回到③\n知识库资料不足 → 范围允许时改写查询\n无合法补救 / 次数耗尽 → 资料不足回复", fillcolor="#FFF7ED", color="#FDBA74", width=4.0];
+  {rank=same; judge; retry;}
+  generate -> judge; judge -> retry [label="未通过", color="#D97706", constraint=false];
+  budget -> retry [style=invis];
+  finish [label="⑤ 最终门控与事务提交\n答案 / 引用安全 + 已使用事件、记忆和附件的权限复核\n提交消息、事件及原始证据；按条件安排空闲记忆任务\n返回最终答案与引用（SSE 不提前发送候选正文）", fillcolor="#DCFCE7", color="#22C55E", width=7.5];
+  judge -> finish [label="通过", color="#16A34A"];
+  retry -> finish [style=invis];
+  note [label="范围与失败边界\n显式选库 / 附件问答不自动联网；未限定范围的兼容路径可选择 Web / direct\n内容拦截、依赖错误、超时与预算错误独立终止，不保存本轮问答", fillcolor="#FFF1F2", color="#FDA4AF", width=9.0];
+  finish -> note [style=dashed, arrowhead=none];
 }

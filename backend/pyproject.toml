@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "rag-e-backend"
+name = "continuum-backend"
 version = "1.0.0"
-description = "General knowledge platform with graph RAG and observability"
+description = "Knowledge- and Memory-Driven Platform for Long-Horizon Multimodal Agents"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
 dependencies = [

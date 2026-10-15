@@ -50,6 +50,13 @@ async def system(services=Depends(container)):
         "web_search_enabled": settings.web_search_enabled,
         "web_search": services.web.status(),
         "vision": {"configured": services.vision.configured, "model": settings.vision_model or None},
+        "memory": {
+            "enabled": settings.memory_enabled,
+            "compaction_enabled": settings.context_compaction_enabled,
+            "meter": settings.context_token_meter,
+            "window": settings.context_window,
+            "worker_enabled": settings.memory_worker_enabled,
+        },
         "graph_enabled": settings.graph_enabled,
         "knowledge_domain": settings.knowledge_domain,
         "langfuse_enabled": settings.langfuse_enabled,

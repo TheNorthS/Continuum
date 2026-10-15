@@ -30,4 +30,10 @@ async def snapshot(services=Depends(container)):
         "dependencies": await services.dependency_health(),
         "moderation": services.moderation.status(),
         "reranker": services.reranker.status(),
+        "memory": {
+            "enabled": services.settings.memory_enabled,
+            "worker_running": services.memory.worker is not None,
+            "meter": services.settings.context_token_meter,
+            "compaction_enabled": services.settings.context_compaction_enabled,
+        },
     }

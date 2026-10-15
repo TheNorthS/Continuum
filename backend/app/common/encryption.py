@@ -127,6 +127,11 @@ class Encrypted(TypeDecorator):
 
 
 FIELDS = {
+    "memory_events": {"content": True},
+    "memory_artifacts": {"payload": True},
+    "compaction_checkpoints": {"summary": True},
+    "memory_records": {"payload": True, "embedding": True},
+    "memory_candidates": {"payload": True},
     "attachments": {"filename": False, "payload": True},
     "conversations": {"title": False},
     "messages": {"content": False, "details": True},

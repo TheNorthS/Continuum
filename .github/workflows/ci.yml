@@ -1,4 +1,4 @@
-name: RAG-E CI
+name: Continuum CI
 on:
   workflow_dispatch:
   pull_request:

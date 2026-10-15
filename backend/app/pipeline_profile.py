@@ -10,6 +10,15 @@ WEB_PIPELINE_FIELDS = frozenset(
     "web_search_provider web_search_max_results web_search_timeout web_search_max_concurrency "
     "web_search_content_max_chars web_search_failure_mode tavily_search_depth".split()
 )
+MEMORY_PIPELINE_FIELDS = frozenset(
+    """
+context_compaction_enabled context_window context_trigger_ratio context_target_ratio context_headroom
+context_keep_recent context_summary_tokens context_max_attempts context_rebuild_interval context_token_meter
+context_model_windows memory_enabled memory_min_turns memory_max_records memory_token_budget memory_candidates
+memory_rerank_enabled memory_vector_enabled memory_episode_days memory_mmr_eta
+""".split()
+)
+OPTIONAL_PIPELINE_FIELDS = WEB_PIPELINE_FIELDS | MEMORY_PIPELINE_FIELDS
 
 PIPELINE_FIELDS = (
     frozenset(
@@ -32,6 +41,7 @@ moderation_chunk_chars moderation_max_chars moderation_thresholds
 """.split()
     )
     | WEB_PIPELINE_FIELDS
+    | MEMORY_PIPELINE_FIELDS
 )
 
 
@@ -51,12 +61,15 @@ def apply_profile(model, values, root):
     ):
         raise ValueError("RAG 配置文件须包含 version=1 和 settings")
     profile = document["settings"]
-    if set(profile) - PIPELINE_FIELDS or (PIPELINE_FIELDS - WEB_PIPELINE_FIELDS) - set(profile):
+    if set(profile) - PIPELINE_FIELDS or (PIPELINE_FIELDS - OPTIONAL_PIPELINE_FIELDS) - set(profile):
         raise ValueError("RAG 配置字段不完整或包含不允许的字段；不得包含凭据和存储地址")
     # v1 profiles predating dual-provider web search inherit explicit policy defaults.
     # Environment overrides still go through the same conflict checks.
     profile = {
-        **{key: model.model_fields[key].default for key in WEB_PIPELINE_FIELDS},
+        **{
+            key: model.model_fields[key].get_default(call_default_factory=True)
+            for key in OPTIONAL_PIPELINE_FIELDS
+        },
         **profile,
     }
     conflicts = []

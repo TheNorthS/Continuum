@@ -7,6 +7,7 @@ import { api, streamAnswer } from '../services/api';
 import type { Attachment, Conversation, Message, Step } from '../types';
 import { Space, attachmentAccept, uploadAttachment } from './Space';
 import { useSession } from '../stores/session';
+import { ContextPanel } from '../components/ContextPanel';
 
 export function Chat({
   selected,
@@ -39,6 +40,7 @@ export function Chat({
   const attachmentWrite = useRef(false);
   const viewVersion = useRef(0);
   const [showSpace, setShowSpace] = useState(false);
+  const [showContext, setShowContext] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const [notice, setNotice] = useState('');
@@ -78,6 +80,7 @@ export function Chat({
     setUploading(false);
     attachmentWrite.current = false;
     setShowSpace(false);
+    setShowContext(false);
     const options = { signal: controller.signal };
     Promise.all([
       canReadKnowledge
@@ -320,6 +323,14 @@ export function Chat({
   return (
     <div className="chat-page">
       <div className="chat-scope-bar">
+        {selected && (
+          <button
+            disabled={busy || uploading || savingAttachments || savingScope}
+            onClick={() => setShowContext(true)}
+          >
+            上下文与记忆
+          </button>
+        )}
         <label className="knowledge-toggle">
           <input
             type="checkbox"
@@ -574,6 +585,9 @@ export function Chat({
             </button>
           </section>
         </div>
+      )}
+      {showContext && selected && (
+        <ContextPanel conversationId={selected} onClose={() => setShowContext(false)} onBusy={onBusy} />
       )}
     </div>
   );

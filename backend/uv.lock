@@ -2352,7 +2352,7 @@ wheels = [
 ]
 
 [[package]]
-name = "rag-e-backend"
+name = "continuum-backend"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [

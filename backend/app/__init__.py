@@ -1,1 +1,1 @@
-"""RAG-E application. Importing this package performs no I/O."""
+"""Continuum application. Importing this package performs no I/O."""

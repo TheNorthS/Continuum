@@ -33,6 +33,7 @@ class Repository:
         self.db = database
         self.security = None
         self.attachments = None
+        self.memory = None
 
     def allowed_documents(self, s, access="read"):
         if self.security is None:
@@ -149,6 +150,8 @@ class Repository:
             self.attachments.selection(s, user_id, ids)
             if ids != row.attachment_ids:
                 row.attachment_ids = ids
+                row.context_revision += 1
+                row.active_checkpoint_id = None
                 # 移除/切换附件后不再把旧附件回答当成新轮的上下文；不删除展示历史。
                 row.scope_start_id = (
                     s.scalar(select(func.max(Message.id)).where(Message.conversation_id == conversation_id))
@@ -183,6 +186,8 @@ class Repository:
             if ids != row.base_ids or enabled != row.use_knowledge:
                 row.base_ids = ids
                 row.use_knowledge = enabled
+                row.context_revision += 1
+                row.active_checkpoint_id = None
                 row.scope_start_id = (
                     s.scalar(select(func.max(Message.id)).where(Message.conversation_id == conversation_id))
                     or 0
@@ -243,6 +248,8 @@ class Repository:
                 sources = details.get("sources") or []
 
                 def source_document(source):
+                    if source.get("metadata", {}).get("memory_id"):
+                        return None
                     if source.get("metadata", {}).get("attachment_id"):
                         return None
                     doc = source.get("metadata", {}).get("document_id")
@@ -255,6 +262,12 @@ class Repository:
                     source_document(source) and source_document(source) not in allowed for source in sources
                 )
                 deleted = any(a.get("id") not in owned_attachments for a in details.get("attachments", []))
+                if self.memory and details.get("context", {}).get("memory_ids"):
+                    for mid in details["context"]["memory_ids"]:
+                        from app.models.entities import MemoryRecord
+
+                        if not self.memory.record_accessible(s, user_id, s.get(MemoryRecord, mid)):
+                            revoked = True
                 if revoked or deleted:
                     message["content"] = (
                         "该消息引用的附件已删除，内容已隐藏。"
@@ -288,6 +301,10 @@ class Repository:
                 raise AppError("conversation_expired", "会话锁已失效，请重试", 409)
             if row.use_knowledge:
                 self._validate_scope(s, knowledge_scope.get())
+            if self.memory:
+                self.memory.validate_context(
+                    s, row.user_id, result.get("context", {}), self.memory.scope(row)
+                )
             session_attachments = result.get("attachments", [])
             s.execute(update(User).where(User.id == row.user_id).values(token_version=User.token_version))
             owned_attachments = set(
@@ -304,6 +321,11 @@ class Repository:
             allowed = set(s.scalars(self.allowed_documents(s)))
             if knowledge_scope.get() is not None:
                 for source in result.get("sources", []):
+                    if source.get("metadata", {}).get("memory_id"):
+                        mid = source["metadata"]["memory_id"]
+                        if mid not in result.get("context", {}).get("memory_ids", []):
+                            raise AppError("memory_changed", "记忆来源无效", 403)
+                        continue
                     aid = source.get("metadata", {}).get("attachment_id")
                     if aid:
                         continue
@@ -343,6 +365,9 @@ class Repository:
             )
             if row.title == "新对话":
                 row.title = question[:80]
+            s.flush()
+            if self.memory:
+                self.memory.on_finish(s, row)
 
     def release(self, conversation_id, token):
         with self.db.session.begin() as s:

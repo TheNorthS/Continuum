@@ -12,6 +12,11 @@ from app.infrastructure.tracing import Tracing
 from app.knowledge.rag.document_processor import DocumentProcessor
 from app.knowledge.rag.embedding import Embedder
 from app.knowledge.rag.local_store import LocalStore
+from app.memory.context import ContextService
+from app.memory.retrieval import MemoryRetriever
+from app.memory.service import MemoryService
+from app.memory.store import MemoryStore
+from app.memory.tokens import TokenMeter
 from app.services.attachment_service import AttachmentService
 from app.services.chat_service import ChatService
 from app.services.graph_service import GraphService
@@ -102,6 +107,33 @@ class Container:
         # 聊天业务服务
         self.chat = ChatService(settings, self.repository, self.orchestrator, self.moderation)
         self.chat.attachments = self.attachments
+        self.memory_store = MemoryStore(settings, self.db, self.security, self.repository)
+        self.token_meter = TokenMeter(settings, self.http)
+        self.memory_retriever = MemoryRetriever(
+            settings, self.memory_store, self.embedder, self.reranker, self.token_meter
+        )
+        self.context = ContextService(
+            settings,
+            self.memory_store,
+            self.llm,
+            self.token_meter,
+            self.memory_retriever,
+            self.moderation,
+            self.tracing,
+            self.monitoring,
+        )
+        self.memory = MemoryService(
+            settings,
+            self.memory_store,
+            self.llm,
+            self.embedder,
+            self.memory_retriever,
+            self.moderation,
+            self.tracing,
+        )
+        self.repository.memory = self.memory_store
+        self.chat.context = self.context
+        self.llm.context, self.llm.token_meter = self.context, self.token_meter
         self.registry = self.monitoring.registry
         self.requests = self.monitoring.requests
         self.latency = self.monitoring.latency
@@ -173,6 +205,7 @@ class Container:
                 async for key in self.cache.redis.scan_iter(match=pattern, count=100):
                     await self.cache.redis.delete(key)
         await self.monitoring.start(self.dependency_health)
+        await self.memory.start()
 
     def _migrate_encryption(self):
         from sqlalchemy import text
@@ -214,6 +247,7 @@ class Container:
         return dict(await asyncio.gather(*(checked(name, call) for name, call in checks)))
 
     async def close(self):
+        await self.memory.close()
         await self.monitoring.close()
         await self.reranker.close()
         await self.moderation.close()

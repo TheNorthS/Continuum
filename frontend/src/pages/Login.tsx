@@ -38,32 +38,29 @@ export function Login() {
   return (
     <div className="login-page">
       <div className="login-story">
-        <div className="brand">
+        <div className="brand" aria-label="知恒 · Continuum">
           <Layers3 size={30} />
-          <strong>RAG-E</strong>
-          <span>KNOWLEDGE WORKSPACE</span>
+          <strong>知恒</strong>
+          <span>CONTINUUM</span>
         </div>
         <div className="story-copy">
-          <div className="eyebrow">让知识，成为答案。</div>
+          <div className="eyebrow">让知识有据，让记忆延续。</div>
           <h1>
-            连接专业知识
+            知识与记忆
             <br />
-            与每一个好问题。
+            让对话持续生长。
           </h1>
-          <p>
-            从研究资料到业务文档，
-            <br />
-            在自己的知识库中探索有据可依的答案。
-          </p>
+          <p>知识与记忆双驱动的长程多模态智能体平台</p>
+          <p lang="en">Knowledge- and Memory-Driven Platform for Long-Horizon Multimodal Agents</p>
           <div className="story-line" />
-          <small>混合检索 / 自适应问答 / 来源追溯</small>
+          <small>知识检索 / 长期记忆 / 上下文压缩 / 多模态理解</small>
         </div>
         <span className="story-foot">ENGINEERING EDITION · 01</span>
       </div>
       <div className="login-panel">
         <form onSubmit={submit}>
           <span className="eyebrow">WELCOME BACK</span>
-          <h2>进入知识工作台</h2>
+          <h2>进入知恒 · Continuum</h2>
           <p className="subtle">登录后继续你的研究与探索。</p>
           <label>
             用户名

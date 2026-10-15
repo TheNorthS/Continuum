@@ -1,8 +1,16 @@
 # 版本升级与索引重建
 
-本页说明 RAG-E 现有部署如何升级数据库、切换模型和重建索引。首次安装见[快速开始](../README.md#快速开始)，生产操作顺序见[部署指南](DEPLOYMENT.md)。
+本页说明知恒（Continuum）现有部署如何升级数据库、切换模型和重建索引。首次安装见[快速开始](../README.md#快速开始)，生产操作顺序见[部署指南](DEPLOYMENT.md)。
+
+## 项目更名兼容
+
+项目展示名称更新为 **知恒 · Continuum**，定位为“知识与记忆双驱动的长程多模态智能体平台”。前后端包名称分别为 `continuum-frontend` 和 `continuum-backend`；部署时按原安装流程同步依赖即可。
+
+为兼容现有环境，以下标识继续沿用：`RAGE_` 配置前缀、`config/rag.production.json`、`data/rag_e.db`、Milvus 集合、Neo4j 标签、缓存键、Prometheus 指标、JWT 与浏览器存储标识，以及 Compose / Kubernetes 资源和镜像名称。更名本身不需要数据库迁移或重建向量，已有账号、会话与加密资料按原配置访问。此版本仍包含下文列出的功能迁移，升级时需按当前 schema 版本执行。
 
 ## 升级前准备
+
+记忆与上下文压缩增加迁移 `0009`：会话版本/固定原文/活动检查点，以及事件、资料引用、检查点、记忆状态/版本、任务和候选表。原有消息保留，首次使用时投影为事件；密钥轮换已覆盖新增密文字段。不重建知识库向量。配置和容量说明见[记忆指南](MEMORY.md)。
 
 多模态附件增加迁移 `0007`：创建个人附件表，旧会话默认继续使用知识库。附件原文、解析文本和预览数据随业务 SQL 数据库加密保存；升级不需要重建既有向量索引。独立视觉模型配置见[附件指南](ATTACHMENTS.md)。
 
@@ -17,7 +25,7 @@
 
 ## 数据库 schema 升级
 
-RAG-E 使用 Alembic，迁移位于 [backend/app/database/migrations/versions](../backend/app/database/migrations/versions)。当前 head 为 `0006`，依次包含基础表、索引配置记录、图谱状态、安全与知识库授权、会话范围、检索事务版本六个版本。
+知恒（Continuum）使用 Alembic，迁移位于 [backend/app/database/migrations/versions](../backend/app/database/migrations/versions)。当前 head 为 `0009`，包含基础表、索引配置记录、图谱状态、安全与知识库授权、会话范围、检索事务版本、个人附件、会话附件选择和记忆上下文九个版本。
 
 `0006` 增加 `knowledge_bases.retrieval_revision`、缓存命名空间和权限版本，并为 SQLite / PostgreSQL 安装文档、片段与权限变更触发器。现有资料保留，不重新调用 Embedding；版本读取改用固定长度指纹，旧缓存自然过期。详情见[检索版本](RETRIEVAL_REVISION.md)。
 

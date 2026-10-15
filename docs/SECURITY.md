@@ -56,13 +56,14 @@ CLI：`uv run --inexact python -m app.cli create-user alice --role user`。这�
 | 存储 | 处理 |
 |---|---|
 | SQL | 会话标题、消息内容/详情、文档名称/错误、chunk 正文/元数据/向量、知识库名称均加密 |
+| 记忆与压缩 | 事件正文、原始资料、摘要、候选、私人记忆及其向量加密；归属/版本/状态用于事务查询，来源在注入和提交前再次复核 |
 | Redis 与 L1 缓存 | 结果对象序列化后加密；旧版明文缓存前缀在启动时清理 |
 | Neo4j | 实体名称/类型、关系类型/证据/文件名加密；结构 ID、关联和文档归属保留用于授权查询 |
 | Milvus | 原文和元数据放在 AES-GCM 加密 payload；BM25 使用 HMAC 词项；向量保持可检索数值 |
 | 密码与刷新令牌 | 密码使用独立随机盐 scrypt，不可逆；刷新令牌只保存 SHA-256 |
 
 **向量、倒排词频、图拓扑、账号名和权限元数据不等于加密正文**，仍可能泄露统计或结构信息。ANN 必须对可计算向量检索；不能把随机加密向量谎称为可检索语义向量。生产数据库/对象存储/快照的完整静态加密须使用宿主机磁盘或云 KMS 加密卷，服务间远程传输须启用 TLS。
-RAG-E 不修改宿主机的磁盘加密配置。上传解析后不额外保存明文原文件；`data/documents/examples/` 和 `data/sample/` 的合成示例是普通文件，不会自动加密。自行保存的输入文件和本地历史资料需要独立管理访问权限。
+知恒（Continuum）不修改宿主机的磁盘加密配置。上传解析后不额外保存明文原文件；`data/documents/examples/` 和 `data/sample/` 的合成示例是普通文件，不会自动加密。自行保存的输入文件和本地历史资料需要独立管理访问权限。
 
 开发环境首次启动生成 `.secrets/keyring.json`（Git/Docker 忽略），包含数据密钥环、稳定 blind-index 密钥和独立审计密钥；生产必须挂载已有密钥文件，拒绝自动生成。不要把密钥与数据库备份放在同一信任域。Linux 文件模式 0600；Windows 应由部署者把 `.secrets` 的 NTFS ACL 限定到运行账号，轮换使用 [ReplaceFileW](https://learn.microsoft.com/windows/win32/api/winbase/nf-winbase-replacefilew) 保留原文件 DACL。
 Compose 使用独立 `encryption-keys` 卷，不写进镜像；K8s 使用单独 `rag-e-encryption` Secret 挂载。生产推荐通过 Secret Manager/CSI 挂载相同文件格式。

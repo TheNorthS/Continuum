@@ -1,0 +1,127 @@
+.memory-settings {
+  padding: 20px;
+  background: #f0fdfa;
+  border: 1px solid #cce7e3;
+  border-radius: 14px;
+  margin: 20px 0;
+}
+.memory-settings label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-right: 24px;
+  font-weight: 600;
+}
+.memory-settings p {
+  color: #64748b;
+  line-height: 1.6;
+  margin-bottom: 0;
+}
+.memory-list {
+  display: grid;
+  gap: 12px;
+}
+.memory-card {
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: white;
+}
+.memory-card > div {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.memory-card > p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.memory-card small {
+  color: #64748b;
+}
+.memory-card footer {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+.memory-status {
+  font-size: 12px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: #475569;
+}
+.memory-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+.memory-status.disputed {
+  background: #fef3c7;
+  color: #92400e;
+}
+.memory-form {
+  display: grid;
+  gap: 12px;
+}
+.memory-form label {
+  display: grid;
+  gap: 6px;
+}
+.memory-form input,
+.memory-form textarea,
+.memory-form select {
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  width: 100%;
+}
+.memory-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+.memory-jobs {
+  margin: 24px 0;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 18px;
+}
+.context-panel {
+  width: min(840px, 95vw);
+  max-height: 88vh;
+  overflow: auto;
+}
+.context-panel pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #f8fafc;
+  padding: 16px;
+  font-size: 12px;
+}
+.context-pins {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+.context-pins label {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+.context-pins span {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .memory-settings label {
+    display: flex;
+    margin-bottom: 12px;
+  }
+  .memory-card footer {
+    flex-wrap: wrap;
+  }
+}
