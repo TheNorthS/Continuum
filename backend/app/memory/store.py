@@ -651,7 +651,9 @@ class MemoryStore:
         # 检查与写入共享一个事务，失败会整体回滚。
         with self.db.session.begin() as session:
             # 再次核实会话属于快照中的用户。
-            row = self.repository._owned(session, snapshot["conversation_id"], snapshot["owner_id"])
+            row = self.repository.leased_conversation(
+                session, snapshot["conversation_id"], token, snapshot["owner_id"]
+            )
             # 通过条件更新争取本次快照的提交资格。
             changed = session.execute(
                 # 更新目标是当前会话行。
@@ -665,7 +667,7 @@ class MemoryStore:
                     # 当前会话锁必须仍由本轮令牌持有。
                     Conversation.lock_token == token,
                     # 租约必须尚未过期。
-                    Conversation.lock_until > time.time(),
+                    Conversation.lock_until > self.repository.lease_now(),
                 )
                 # 成功命中时把上下文版本加一。
                 .values(context_revision=Conversation.context_revision + 1)
@@ -733,6 +735,9 @@ class MemoryStore:
             session.add(cp)
             # 在同一事务内切换活动指针。
             row.active_checkpoint_id = cp.id
+            # 写入结束前再验证数据库时间；超期则连同检查点和活动指针一起回滚。
+            session.flush()
+            self.repository.check_lease(session, row.id, token)
             # 返回新 ID，事务成功退出后才真正对外提交。
             return cp.id
 
@@ -941,7 +946,7 @@ class MemoryStore:
             # 固定列表和上下文版本在同一事务内更新。
             with self.db.session.begin() as session:
                 # 再次确认会话归属。
-                row = self.repository._owned(session, cid, uid)
+                row = self.repository.leased_conversation(session, cid, token, uid)
                 # 非空固定列表必须全部能被当前用户访问。
                 if not self.evidence_accessible(session, uid, ids) and ids:
                     # 无效事件不允许写入固定列表。
@@ -960,6 +965,8 @@ class MemoryStore:
                 row.active_checkpoint_id = None
                 # 推进版本，让正在运行的旧快照无法提交。
                 row.context_revision += 1
+                # 到期后不允许旧持有者提交固定原文或活动指针变更。
+                self.repository.check_lease(session, cid, token)
         # 即使校验或事务失败也执行租约清理。
         finally:
             # 仅用自己取得的令牌释放会话锁。
@@ -976,7 +983,7 @@ class MemoryStore:
             # 在事务内检查目标并切换活动检查点。
             with self.db.session.begin() as session:
                 # 再次校验会话归属。
-                row = self.repository._owned(session, cid, uid)
+                row = self.repository.leased_conversation(session, cid, token, uid)
                 # 非空 ID 才需要读取及验证旧检查点。
                 if checkpoint_id:
                     # 查询待恢复的检查点。
@@ -1013,6 +1020,8 @@ class MemoryStore:
                 row.active_checkpoint_id = checkpoint_id
                 # 推进上下文版本，使其他快照失效。
                 row.context_revision += 1
+                # 恢复期间租约失效时回滚指针，不覆盖后继请求的上下文。
+                self.repository.check_lease(session, cid, token)
                 # 返回实际选择的检查点 ID。
                 return {"checkpoint_id": checkpoint_id}
         # 成功或失败都需要释放恢复操作持有的会话租约。

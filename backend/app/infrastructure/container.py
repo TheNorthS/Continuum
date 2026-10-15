@@ -46,7 +46,7 @@ class Container:
         self.security = SecurityService(settings, self.db, self.cipher)
         self.moderation = ModerationService(settings, self.security, self.monitoring, self.tracing)
         # 创建数据访问层：业务代码不直接依赖具体 SQL，而是通过统一的数据访问接口操作数据。
-        self.repository = Repository(self.db)
+        self.repository = Repository(self.db, lease_seconds=settings.conversation_lease_seconds)
         self.repository.security = self.security
         # 异步的Http连接池
         self.http = httpx.AsyncClient(

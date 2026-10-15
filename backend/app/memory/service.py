@@ -987,7 +987,7 @@ class MemoryService:
             # 事件同步和任务创建放在同一事务中。
             with self.store.db.session.begin() as session:
                 # 验证会话确实属于当前用户。
-                row = self.store.repository._owned(session, cid, uid)
+                row = self.store.repository.leased_conversation(session, cid, token, uid)
                 # 锁定个人记忆状态并读取当前版本。
                 state = self.store.state(session, uid, lock=True)
                 # 手动提炼也要求开启记忆和自动提炼设置。
@@ -1027,6 +1027,8 @@ class MemoryService:
                 elif job.status in {"pending", "failed", "retry"}:
                     # 恢复 pending、取消等待并重置尝试次数；已持久化阶段仍可复用。
                     job.status, job.run_after, job.attempts = "pending", time.time(), 0
+                # 排队写入结束前再校验租约，失效则撤回本次任务变更。
+                self.store.repository.check_lease(session, cid, token)
                 # 返回实际任务 ID 和状态；运行或已完成任务不会重复创建。
                 return {"id": jid, "status": job.status}
         # 不论排队结果如何都清理会话租约。

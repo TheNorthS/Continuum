@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     attachment_max_chars: int = Field(default=24000, ge=1000, le=60000)
     attachment_max_images: int = Field(default=12, ge=1, le=20)
     request_timeout: float = Field(default=150, gt=0, le=160)
+    conversation_lease_seconds: float = Field(default=180, ge=10, le=3600, allow_inf_nan=False)
+    conversation_lease_renew_interval: float = Field(default=30, gt=0, le=300, allow_inf_nan=False)
     context_compaction_enabled: bool = True
     context_window: int = Field(default=128000, ge=8192, le=2000000)
     context_trigger_ratio: float = Field(default=0.80, ge=0.5, le=0.95)
@@ -201,6 +203,8 @@ class Settings(BaseSettings):
 
         from app.safety.policy import CATEGORIES
 
+        if self.conversation_lease_renew_interval > self.conversation_lease_seconds / 3:
+            raise ValueError("会话续租间隔不能超过租约有效期的三分之一")
         if self.context_target_ratio >= self.context_trigger_ratio:
             raise ValueError("上下文压缩目标必须低于触发比例")
         windows = [self.context_window, *self.context_model_windows.values()]

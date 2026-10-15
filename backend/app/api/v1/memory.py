@@ -8,6 +8,7 @@ from sqlalchemy import select
 
 from app.common.errors import AppError
 from app.dependencies import container, require_permission
+from app.infrastructure.conversation_lease import ConversationLease
 from app.memory.policy import closed_segments
 from app.models.entities import CompactionCheckpoint, MemoryRecord
 from app.services.moderation_service import ModerationBlocked
@@ -184,20 +185,22 @@ async def pins(conversation_id: str, payload: PinInput, user=Depends(owner), ser
 
 @router.post("/conversations/{conversation_id}/context/compact")
 async def compact(conversation_id: str, user=Depends(owner), services=Depends(container)):
-    token = await asyncio.to_thread(services.repository.claim, conversation_id, user["id"])
-    try:
+    async def operation(lease):
         async with asyncio.timeout(services.settings.request_timeout):
-            current = await services.context.open(user["id"], conversation_id, token, "继续当前会话")
+            current = await services.context.open(user["id"], conversation_id, lease.token, "继续当前会话")
             payload = {"question": "继续当前会话", "history": []}
             limits = services.token_meter.limits(services.settings.llm_model)
             committed = await services.context.compact(
                 current, payload, "general", services.llm.body, limits, force=True
             )
             return {"committed": committed, **services.context.report(current)}
+
+    try:
+        return await ConversationLease(
+            services.repository, services.settings, conversation_id, user["id"]
+        ).run(operation)
     except ModerationBlocked as exc:
         raise AppError("context_blocked", "上下文摘要未通过安全审查，原始历史已保留", 422) from exc
-    finally:
-        await asyncio.shield(asyncio.to_thread(services.repository.release, conversation_id, token))
 
 
 @router.post("/conversations/{conversation_id}/memory/extract", status_code=202)

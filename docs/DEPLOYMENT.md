@@ -13,6 +13,12 @@ docker compose logs -f backend
 前端 8080、后端 8000 只绑定宿主机回环地址；PostgreSQL/Redis/Milvus/MinIO/etcd 不暴露宿主机端口。
 数据库保存在命名卷。普通 `docker compose down` 不删除持久卷；不要把 `down -v` 当成常规重启命令。
 
+## 会话租约
+
+`RAGE_CONVERSATION_LEASE_SECONDS=180` 控制有效期，`RAGE_CONVERSATION_LEASE_RENEW_INTERVAL=30` 控制续租间隔；间隔必须不超过有效期的三分之一。全部 API worker 使用同一数据库判定时间与归属，不依赖单机内存锁。SQL 最终提交同时校验 token 和有效期，并消费提交资格；无需新增 schema 或重建知识库索引。
+
+续租失败会停止生成。数据库不可用导致释放失败时，租约到期后可被新请求接管；生产应监控数据库连接、锁等待和 `conversation_lease_unavailable` 错误。续租不是延长模型执行预算，`RAGE_REQUEST_TIMEOUT` 仍约束问答生成。客户端在提交时断开可能已有结果持久化，应先查看会话历史再重试；跨请求幂等不由租约代替。
+
 ## 启用 Milvus
 
 设置 `RAGE_VECTOR_BACKEND=milvus`。真实模型使用 `RAGE_MODE=live` 和 API embedding 配置（容器默认安装 Milvus 扩展，不内置重型本地模型）。

@@ -29,8 +29,9 @@ def as_dict(row):
 
 
 class Repository:
-    def __init__(self, database):
+    def __init__(self, database, *, lease_seconds=180):
         self.db = database
+        self.lease_seconds = lease_seconds
         self.security = None
         self.attachments = None
         self.memory = None
@@ -142,9 +143,7 @@ class Repository:
     def configure_attachments(self, conversation_id, user_id, token, attachment_ids=None):
         # 调用者必须持有会话租约；None 沿用已保存列表，[] 明确清空。
         with self.db.session.begin() as s:
-            row = self._owned(s, conversation_id, user_id)
-            if row.lock_token != token:
-                raise AppError("conversation_expired", "会话锁已失效，请重试", 409)
+            row = self.leased_conversation(s, conversation_id, token, user_id)
             ids = list(row.attachment_ids if attachment_ids is None else attachment_ids)
             s.execute(update(User).where(User.id == user_id).values(token_version=User.token_version))
             self.attachments.selection(s, user_id, ids)
@@ -157,6 +156,7 @@ class Repository:
                     s.scalar(select(func.max(Message.id)).where(Message.conversation_id == conversation_id))
                     or 0
                 )
+            self.check_lease(s, conversation_id, token)
             return {"attachment_ids": ids, "scope_start_id": row.scope_start_id}
 
     def change_attachments(self, conversation_id, user_id, attachment_ids):
@@ -170,9 +170,7 @@ class Repository:
     def configure_scope(self, conversation_id, user_id, token, base_ids=None, use_knowledge=None):
         """Called while holding the conversation lease, including scope-only edits."""
         with self.db.session.begin() as s:
-            row = self._owned(s, conversation_id, user_id)
-            if row.lock_token != token:
-                raise AppError("conversation_expired", "会话锁已失效，请重试", 409)
+            row = self.leased_conversation(s, conversation_id, token, user_id)
             enabled = row.use_knowledge if use_knowledge is None else use_knowledge
             if base_ids is not None and not enabled:
                 if use_knowledge is False:
@@ -199,6 +197,7 @@ class Repository:
                     .order_by(KnowledgeBase.id)
                 )
             )
+            self.check_lease(s, conversation_id, token)
             return {
                 "base_ids": ids,
                 "base_names": names,
@@ -277,28 +276,75 @@ class Repository:
                     message["details"] = {}
             return history
 
+    def lease_now(self):
+        # 多进程以数据库时钟为准；PostgreSQL now() 固定于事务开始，不能用于最终过期复核。
+        if self.db.engine.dialect.name == "postgresql":
+            return func.extract("epoch", func.clock_timestamp())
+        return (func.julianday("now") - 2440587.5) * 86400.0
+
+    def check_lease(self, session, conversation_id, token, *, consume=False):
+        # 条件 UPDATE 同时验证资格并持有行写锁；不能只 SELECT 后在 Python 中比较 token。
+        if not token:
+            raise AppError("conversation_expired", "会话租约已失效，请重试", 409)
+        values = {"lock_token": None, "lock_until": 0} if consume else {"lock_until": Conversation.lock_until}
+        changed = session.execute(
+            update(Conversation)
+            .where(
+                Conversation.id == conversation_id,
+                Conversation.lock_token == token,
+                Conversation.lock_until > self.lease_now(),
+            )
+            .values(**values)
+            .execution_options(synchronize_session=False)
+        )
+        if not changed.rowcount:
+            raise AppError("conversation_expired", "会话租约已失效，请重试", 409)
+
+    def leased_conversation(self, session, conversation_id, token, user_id=None):
+        row = session.get(Conversation, conversation_id)
+        if row is None or user_id is not None and row.user_id != user_id:
+            raise AppError("not_found", "会话不存在", 404)
+        # 与附件删除、记忆遗忘一致，先锁用户行再锁会话，避免相反锁顺序造成死锁。
+        session.execute(update(User).where(User.id == row.user_id).values(token_version=User.token_version))
+        self.check_lease(session, conversation_id, token)
+        session.refresh(row)
+        return row
+
     def claim(self, conversation_id, user_id):
         token = new_id()
         with self.db.session.begin() as s:
             self._owned(s, conversation_id, user_id)
             changed = s.execute(
                 update(Conversation)
-                .where(Conversation.id == conversation_id, Conversation.lock_until < time.time())
-                .values(lock_token=token, lock_until=time.time() + 180)
+                .where(Conversation.id == conversation_id, Conversation.lock_until <= self.lease_now())
+                .values(lock_token=token, lock_until=self.lease_now() + self.lease_seconds)
+                .execution_options(synchronize_session=False)
             )
             if not changed.rowcount:
                 raise AppError("conversation_busy", "此会话正在生成回答，请稍后重试", 409)
         return token
 
+    def renew(self, conversation_id, token):
+        # 只延长仍有效的同一租约；已过期的旧持有者不能通过续租复活。
+        if not token:
+            raise AppError("conversation_expired", "会话租约已失效，请重试", 409)
+        with self.db.session.begin() as s:
+            changed = s.execute(
+                update(Conversation)
+                .where(
+                    Conversation.id == conversation_id,
+                    Conversation.lock_token == token,
+                    Conversation.lock_until > self.lease_now(),
+                )
+                .values(lock_until=self.lease_now() + self.lease_seconds)
+                .execution_options(synchronize_session=False)
+            )
+            if not changed.rowcount:
+                raise AppError("conversation_expired", "会话租约已失效，请重试", 409)
+
     def finish(self, conversation_id, token, question, result):
         with self.db.session.begin() as s:
-            row = s.scalar(
-                select(Conversation).where(
-                    Conversation.id == conversation_id, Conversation.lock_token == token
-                )
-            )
-            if not row:
-                raise AppError("conversation_expired", "会话锁已失效，请重试", 409)
+            row = self.leased_conversation(s, conversation_id, token)
             if row.use_knowledge:
                 self._validate_scope(s, knowledge_scope.get())
             if self.memory:
@@ -340,13 +386,6 @@ class Repository:
                 for source in result.get("sources", [])
             ):
                 raise AppError("permission_changed", "生成期间资料权限已变化，请重新提问", 403)
-            row = s.scalar(
-                select(Conversation).where(
-                    Conversation.id == conversation_id, Conversation.lock_token == token
-                )
-            )
-            if not row:
-                raise AppError("conversation_expired", "会话锁已失效，请重试", 409)
             s.add_all(
                 [
                     Message(
@@ -368,6 +407,10 @@ class Repository:
             s.flush()
             if self.memory:
                 self.memory.on_finish(s, row)
+            s.flush()
+            # 在所有消息、事件和后台任务写入后再复核并消费 token；失败整体回滚。
+            # 消费资格与数据同事务提交，重复 finish 或旧请求释放均无法影响新租约。
+            self.check_lease(s, conversation_id, token, consume=True)
 
     def release(self, conversation_id, token):
         with self.db.session.begin() as s:
@@ -382,7 +425,7 @@ class Repository:
             self._owned(s, conversation_id, user_id)
             changed = s.execute(
                 delete(Conversation).where(
-                    Conversation.id == conversation_id, Conversation.lock_until < time.time()
+                    Conversation.id == conversation_id, Conversation.lock_until <= self.lease_now()
                 )
             )
             if not changed.rowcount:

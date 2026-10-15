@@ -623,7 +623,7 @@ class ContextService:
                 # 累计被拒绝的压缩尝试。
                 self.compactions.labels("rejected").inc()
                 # 会话版本或来源冲突需要让调用方明确重试。
-                if isinstance(exc, AppError) and exc.code == "context_changed":
+                if isinstance(exc, AppError) and exc.code in {"context_changed", "conversation_expired"}:
                     # 继续向上传递并发变化错误，不静默使用旧范围。
                     raise
                 # Existing stable projection and raw log are untouched; caller enforces the hard budget.

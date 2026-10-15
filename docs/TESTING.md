@@ -10,6 +10,10 @@
 
 ## 事实依据反馈修正
 
+会话租约专项：`tests/test_conversation_lease.py` 覆盖过期禁止续租/提交、接管后旧持有者隔离、并发领取、重复提交、事务末过期整体回滚、长生成续租、续租失败/超时、取消及晚到线程清理。`tests/test_conversation_lease_postgres.py` 使用 `RAGE_TEST_POSTGRES_URL` 创建一次性数据库，在生产 SQL 方言验证相同的领取和提交并发契约；未配置时跳过，CI 的 PostgreSQL 作业会运行。
+
+2026-10-15 已在独立 PostgreSQL 16.15 容器中运行 `tests/test_conversation_lease_postgres.py` 与 `tests/test_memory_postgres.py`，共 **3 项通过、0 项跳过**。覆盖过期与接管、并发领取与重复提交，以及记忆版本、任务领取和过期任务隔离；测试后清理一次性数据库与容器，未使用业务库。本机 JUnit 记录位于 `test-results/conversation-lease-postgres/results.xml`，不随仓库发布。该结果是 SQL 正确性回归，不代表生产负载压测。
+
 长上下文及个人记忆专项：`tests/test_memory_context.py` 验证事件/工具配对、引用裁剪、摘要来源、检查点恢复与 CAS、自动触发与溢出恢复、记忆版本/冲突/遗忘、知识库范围、后台租约和加密迁移。`memory.test.tsx` 覆盖记忆管理、证据、更正、遗忘、固定原文和手动压缩。模拟协议通过不代表真实模型事实保持率提升，实际多轮质量对照见[记忆验收说明](MEMORY.md)。
 
 在 `backend` 运行 `uv run --inexact pytest -q tests/test_grounding_feedback.py tests/test_workflow.py tests/test_moderation.py`。覆盖 Grounding JSON 协议、失败原因传入下一轮、同一资料下修正后重新评分、次数上限、切换资料 / 新一轮清空反馈，以及反馈审查、API / SSE / 历史和正文追踪隔离。

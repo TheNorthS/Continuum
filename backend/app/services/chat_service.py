@@ -2,6 +2,7 @@ import asyncio  # 提供线程卸载、整轮超时和取消时的释放保护�
 
 from app.common.context import knowledge_scope  # 当前异步请求使用的知识库范围。
 from app.common.errors import AppError  # 带业务错误码、公开提示和 HTTP 状态的异常。
+from app.infrastructure.conversation_lease import ConversationLease  # 续租、失租取消及安全释放。
 from app.memory.context import ACTIVE_CONTEXT
 from app.services.moderation_service import ModerationBlocked  # 内容被拦截时使用的专门异常。
 
@@ -24,8 +25,18 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
         use_knowledge=None,  # None 沿用会话设置，False 明确关闭知识库。
         attachment_ids=None,  # None 沿用会话已保存附件，[] 清空，列表替换选择。
     ):
-        # 先验证归属并获取会话租约；同一会话同时生成时返回冲突，数据库操作在线程中执行。
-        token = await asyncio.to_thread(self.repository.claim, conversation_id, user_id)
+        lease = ConversationLease(self.repository, self.settings, conversation_id, user_id)
+        return await lease.run(
+            lambda held: self._answer(
+                held, conversation_id, user_id, question, mode, emit, base_ids, use_knowledge, attachment_ids
+            )
+        )
+
+    async def _answer(
+        self, lease, conversation_id, user_id, question, mode, emit, base_ids, use_knowledge, attachment_ids
+    ):
+        # 整轮准备、生成和提交期间由外层持续续租，失租后取消本任务。
+        token = lease.token
         # 记录 ContextVar 的恢复令牌；设置范围之前出错时仍能安全进入 finally。
         scope_token = None
         context_token = None
@@ -146,7 +157,7 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
             result["knowledge_scope"] = scope
             result["context"] = self.context.report(context_state)
             # 提交前再次核验租约、来源权限和附件存在性，通过后原子写入用户与助手两条消息。
-            await asyncio.to_thread(self.repository.finish, conversation_id, token, question, result)
+            await lease.finish(question, result)
             # 返回包含会话 ID 的结果，SSE 层收到后才能发送 result 事件。
             return {**result, "conversation_id": conversation_id}
         finally:
@@ -155,5 +166,4 @@ class ChatService:  # 一轮问答的业务入口，负责锁、上下文、安�
             # 无论成功、拦截、异常还是取消，都恢复调用前的请求范围。
             if scope_token is not None:
                 knowledge_scope.reset(scope_token)
-            # 保护释放任务不被外层取消一并取消；释放只匹配本次 token，不解锁其他请求的租约。
-            await asyncio.shield(asyncio.to_thread(self.repository.release, conversation_id, token))
+            # 会话租约由外层统一停止续租并释放，释放操作不会误解锁新持有者。
